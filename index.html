@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ប្រព័ន្ធប្រឡងអនឡាញសកល</title>
+  <title>ប្រព័ន្ធប្រឡងអនឡាញ វិទ្យាល័យកូប</title>
   
   <link rel="icon" href="https://www.dropbox.com/scl/fi/2tds3u7hcslgrtcnfimdg/nv.ico?rlkey=t4swsdf8hv7iwbg23pjknp0wn&st=84qf47bv&dl=1">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -105,6 +105,7 @@
 
     // Teacher State
     let activeTab = 'add_questions';
+    let reportType = 'exam'; // បន្ថែម Report Type: 'exam' ឬ 'lesson'
     let repClass = 'All';
     let repMonth = 'All';
     let mqClass = 'All'; 
@@ -319,6 +320,11 @@
       renderApp();
     };
 
+    window.setReportType = (type) => {
+      reportType = type;
+      renderApp();
+    };
+
     window.startExam = async (tId, month, isLesson = false) => {
       selectedTeacherId = tId;
       selectedMonth = month;
@@ -496,7 +502,7 @@
         return false;
       });
 
-      if (!isAutoSubmit && unanswered) {
+      if (!isAutoSubmit && unanswered && !currentQuizIsLesson) {
         if (!confirm('អ្នកមិនទាន់ឆ្លើយគ្រប់សំណួរទេ។ តើចង់បញ្ជូនឬទេ?')) return;
       }
 
@@ -573,6 +579,7 @@
           answers: originalAnswers,
           questionScores: questionScores,
           needsGrading: hasEssay,
+          isLesson: currentQuizIsLesson, // បែងចែកទិន្នន័យមេរៀន និងប្រឡង
           timestamp: serverTimestamp()
         });
         
@@ -581,7 +588,7 @@
         localStorage.removeItem(`quiz_questions_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); 
         localStorage.removeItem(`quiz_options_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); 
         quizSubmitted = true; quizStarted = false; renderApp();
-      } catch (err) { alert("មានបញ្ហាក្នុងការរក្សាទុកពិន្ទុ។"); }
+      } catch (err) { alert("មានបញ្ហាក្នុងការរក្សាទុក។"); }
     };
 
     window.pauseQuiz = () => {
@@ -638,11 +645,12 @@
         e.preventDefault();
         const name = document.getElementById('tProfileName').value.trim();
         const subject = document.getElementById('tProfileSubject').value.trim();
+        const photoURL = document.getElementById('tProfilePhoto').value.trim();
         const btn = e.target.querySelector('button[type="submit"]');
         btn.innerHTML = 'កំពុងរក្សាទុក...'; btn.disabled = true;
         try {
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'teachers', firebaseUser.uid), {
-                name, subject, email: firebaseUser.email, updatedAt: serverTimestamp()
+                name, subject, photoURL, email: firebaseUser.email, updatedAt: serverTimestamp()
             }, { merge: true });
             alert('រក្សាទុកព័ត៌មានគណនីបានជោគជ័យ!');
         } catch(err) { alert('មានបញ្ហាពេលរក្សាទុក!'); }
@@ -1009,14 +1017,17 @@
     window.printScoreReport = () => {
       const filterClass = document.getElementById('repClass').value;
       const filterMonth = document.getElementById('repMonth').value;
+      const isLessonReport = reportType === 'lesson';
       
       const myResults = results.filter(r => r.teacherId === firebaseUser.uid);
       
       let filteredResults = myResults.filter(r => {
-        return (filterClass === 'All' || r.classLevel === filterClass) && (filterMonth === 'All' || r.month === filterMonth);
+        return (filterClass === 'All' || r.classLevel === filterClass) && 
+               (filterMonth === 'All' || r.month === filterMonth) &&
+               (isLessonReport ? r.isLesson : !r.isLesson);
       });
 
-      if(filteredResults.length === 0) return alert("មិនមានទិន្នន័យពិន្ទុសម្រាប់បោះពុម្ពទេ!");
+      if(filteredResults.length === 0) return alert("មិនមានទិន្នន័យសម្រាប់បោះពុម្ពទេ!");
 
       filteredResults.sort((a, b) => {
         const numA = parseInt((a.classLevel || '').replace(/[^0-9]/g, '')) || 0;
@@ -1032,23 +1043,42 @@
       const thStyle = "padding: 8px 6px; border: 1px solid #333; background-color: #f3f4f6; font-weight: bold; text-align: center;";
       const tdStyle = "padding: 6px; border: 1px solid #333;";
 
-      let rowsHtml = filteredResults.map((r, i) => `
+      let rowsHtml = filteredResults.map((r, i) => {
+        const dt = r.timestamp && r.timestamp.toDate ? new Date(r.timestamp.toDate()).toLocaleString('km-KH', {dateStyle:'short', timeStyle:'short'}) : '';
+        return `
         <tr style="border-bottom: 1px solid #ccc;">
-            <td style="${tdStyle} text-align: center;">${i + 1}</td><td style="${tdStyle} text-align: center;">${r.studentId}</td>
-            <td style="${tdStyle}">${r.studentName}</td><td style="${tdStyle} text-align: center;">${r.classLevel}</td>
-            <td style="${tdStyle} text-align: center;">${r.month}</td><td style="${tdStyle} text-align: center; font-weight: bold;">${r.score} / ${r.totalPoints}</td>
+            <td style="${tdStyle} text-align: center;">${i + 1}</td>
+            <td style="${tdStyle} text-align: center;">${r.studentId}</td>
+            <td style="${tdStyle}">${r.studentName}</td>
+            <td style="${tdStyle} text-align: center;">${r.classLevel}</td>
+            <td style="${tdStyle} text-align: center;">${r.month}</td>
+            ${!isLessonReport ? `
+            <td style="${tdStyle} text-align: center; font-weight: bold;">${r.score} / ${r.totalPoints}</td>
             <td style="${tdStyle} text-align: center; font-size: 12px;">${r.needsGrading ? 'រង់ចាំការកែ' : 'កែរួចរាល់'}</td>
-        </tr>`).join('');
+            ` : `
+            <td style="${tdStyle} text-align: center; font-size: 12px;">${dt}</td>
+            `}
+        </tr>`;
+      }).join('');
 
       const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
+      const reportTitle = isLessonReport ? 'របាយការណ៍សិស្សចូលអានមេរៀន' : 'របាយការណ៍ពិន្ទុសិស្ស';
+      
+      let thHtml = `<th style="${thStyle} width: 40px;">ល.រ</th><th style="${thStyle} width: 80px;">អត្តលេខ</th><th style="${thStyle} text-align: left;">ឈ្មោះសិស្ស</th><th style="${thStyle} width: 60px;">ថ្នាក់ទី</th><th style="${thStyle} width: 80px;">ខែ</th>`;
+      if (!isLessonReport) {
+         thHtml += `<th style="${thStyle} width: 80px;">ពិន្ទុទទួលបាន</th><th style="${thStyle} width: 100px;">ស្ថានភាព</th>`;
+      } else {
+         thHtml += `<th style="${thStyle} width: 150px;">កាលបរិច្ឆេទអាន</th>`;
+      }
+
       const printHtml = `
-        <div style="font-family: 'Moul', cursive; text-align: center; font-size: 22px; margin-bottom: 5px; color: #1d4ed8;">របាយការណ៍ពិន្ទុសិស្ស</div>
+        <div style="font-family: 'Moul', cursive; text-align: center; font-size: 22px; margin-bottom: 5px; color: #1d4ed8;">${reportTitle}</div>
         <div style="text-align: center; font-size: 15px; margin-bottom: 20px; font-family: 'Hanuman', sans-serif;">មុខវិជ្ជា៖ ${myProfile.subject || 'ទូទៅ'} | លោកគ្រូ/អ្នកគ្រូ៖ ${myProfile.name || firebaseUser.email}</div>
         <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 12px; font-weight: bold; font-family: 'Hanuman', sans-serif;">
           <div>ចំណាត់ថ្នាក់៖ ${titleClass} | ${titleMonth}</div><div>កាលបរិច្ឆេទបោះពុម្ព៖ ${dateStr}</div>
         </div>
         <table style="width: 100%; border-collapse: collapse; font-size: 14px; font-family: 'Hanuman', sans-serif; border: 2px solid #333;">
-            <thead><tr><th style="${thStyle} width: 40px;">ល.រ</th><th style="${thStyle} width: 80px;">អត្តលេខ</th><th style="${thStyle} text-align: left;">ឈ្មោះសិស្ស</th><th style="${thStyle} width: 60px;">ថ្នាក់ទី</th><th style="${thStyle} width: 80px;">ខែ</th><th style="${thStyle} width: 80px;">ពិន្ទុទទួលបាន</th><th style="${thStyle} width: 100px;">ស្ថានភាព</th></tr></thead>
+            <thead><tr>${thHtml}</tr></thead>
             <tbody>${rowsHtml}</tbody>
         </table>`;
 
@@ -1171,7 +1201,7 @@
       const container = document.getElementById('header-container');
       if (!userRole) { container.innerHTML = ''; return; }
       
-      let displayTitle = "ប្រព័ន្ធប្រឡងអនឡាញសកល";
+      let displayTitle = "ប្រព័ន្ធប្រឡងអនឡាញ វិទ្យាល័យកូប";
       if (userRole === 'teacher') {
           const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
           if(myProfile.subject || myProfile.name) {
@@ -1183,7 +1213,7 @@
         <header class="bg-white shadow-sm sticky top-0 z-10 border-b border-blue-100">
           <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
             <h1 class="text-lg sm:text-xl text-blue-700 flex items-center gap-2 font-moul">
-              <i class="fas fa-graduation-cap text-2xl"></i> <span class="hidden sm:inline">${displayTitle}</span><span class="sm:hidden">ប្រព័ន្ធប្រឡងអនឡាញ</span>
+              <i class="fas fa-graduation-cap text-2xl"></i> <span class="hidden sm:inline">${displayTitle}</span><span class="sm:hidden">ប្រព័ន្ធប្រឡងអនឡាញ វិទ្យាល័យកូប</span>
             </h1>
             <button onclick="window.logout()" class="flex items-center gap-2 text-red-500 hover:text-red-700 font-semibold bg-red-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base">
               <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">ចាកចេញ</span>
@@ -1199,7 +1229,7 @@
           <div class="bg-white p-6 sm:p-8 rounded-2xl shadow-xl max-w-md w-full border-t-4 border-blue-600">
             <div class="text-center mb-6">
               <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm"><i class="fas fa-laptop-code"></i></div>
-              <h1 class="text-2xl sm:text-3xl text-gray-800 mb-2 font-moul">ប្រព័ន្ធប្រឡងអនឡាញ</h1>
+              <h1 class="text-2xl sm:text-3xl text-gray-800 mb-2 font-moul">ប្រព័ន្ធប្រឡងអនឡាញ វិទ្យាល័យកូប</h1>
               <p class="text-gray-500 font-medium text-sm">អនុវត្តកិច្ចការ និងប្រឡងតាមប្រព័ន្ធអេឡិចត្រូនិក</p>
             </div>
             
@@ -1255,11 +1285,16 @@
             if (!targetMap[key]) {
                 let tName = 'លោកគ្រូ/អ្នកគ្រូ';
                 let tSubj = 'ទូទៅ';
+                let tPhoto = '';
                 if (tId !== 'legacy') {
                     const tDoc = teachersData.find(t => t.uid === tId);
-                    if (tDoc) { tName = tDoc.name || tName; tSubj = tDoc.subject || tSubj; }
+                    if (tDoc) { 
+                        tName = tDoc.name || tName; 
+                        tSubj = tDoc.subject || tSubj; 
+                        tPhoto = tDoc.photoURL || ''; 
+                    }
                 }
-                targetMap[key] = { teacherId: tId, month: q.month, teacherName: tName, subject: tSubj, count: 0 };
+                targetMap[key] = { teacherId: tId, month: q.month, teacherName: tName, subject: tSubj, teacherPhoto: tPhoto, count: 0 };
             }
             targetMap[key].count++;
         }
@@ -1269,22 +1304,23 @@
 
       let contentHtml = '';
 
-      if (quizSubmitted || (selectedTeacherId && !currentQuizIsLesson && results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy'))))) {
-        const res = quizSubmitted ? currentScore : results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')));
+      if (quizSubmitted || (selectedTeacherId && results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')) && (currentQuizIsLesson ? r.isLesson : !r.isLesson)))) {
+        const res = quizSubmitted ? currentScore : results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')) && (currentQuizIsLesson ? r.isLesson : !r.isLesson));
         const isPending = res.needsGrading;
         contentHtml = `
           <div class="text-center py-8">
             <i class="fas ${isPending ? 'fa-clock text-yellow-500' : 'fa-check-circle text-green-500'} text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">${isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!'}</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">${currentQuizIsLesson ? 'ការអានមេរៀនបានកត់ត្រា!' : (isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!')}</h2>
             <p class="text-lg text-gray-600 mt-2 mb-4">
-              ${isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។'}
+              ${currentQuizIsLesson ? 'កំណត់ត្រាអានមេរៀនរបស់អ្នកត្រូវបានបញ្ជូនទៅកាន់គ្រូរួចរាល់។' : (isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។')}
             </p>
+            ${currentQuizIsLesson ? '' : `
             <div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto">
               <p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>
               ${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` 
               : `<span class="font-extrabold text-blue-600 text-4xl">${res.score || res.got} / ${res.totalPoints || res.total}</span>`}
-            </div>
-            <button onclick="window.resetQuizState()" class="mt-8 bg-gray-200 text-gray-800 px-6 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition shadow-sm"><i class="fas fa-home mr-1"></i> ត្រឡប់ទៅបញ្ជីវញ្ញាសា</button>
+            </div>`}
+            <button onclick="window.resetQuizState()" class="mt-8 bg-gray-200 text-gray-800 px-6 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition shadow-sm"><i class="fas fa-home mr-1"></i> ត្រឡប់ទៅបញ្ជី${currentQuizIsLesson ? 'មេរៀន' : 'វញ្ញាសា'}</button>
           </div>
         `;
       } else if (quizStarted && currentQuizIsLesson) {
@@ -1304,7 +1340,7 @@
                 <div class="ql-editor p-0 bg-transparent border-none text-base sm:text-lg mb-2 text-gray-800 font-medium">${q.text}</div>
               </div>
             `).join('')}
-            <button onclick="window.resetQuizState()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2">
+            <button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2">
               <i class="fas fa-check-circle"></i> បញ្ចប់ការអាន
             </button>
           </div>
@@ -1387,7 +1423,7 @@
                     const examMonthIndex = standardMonths.indexOf(exam.month);
                     const currentMonthIndex = standardMonths.indexOf(currentMonthName);
                     const isExpired = examMonthIndex !== -1 && currentMonthIndex !== -1 && examMonthIndex < currentMonthIndex;
-                    const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === exam.month && (r.teacherId === exam.teacherId || (!r.teacherId && exam.teacherId === 'legacy')));
+                    const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === exam.month && (r.teacherId === exam.teacherId || (!r.teacherId && exam.teacherId === 'legacy')) && !r.isLesson);
                     
                     return `
                     <div class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition relative overflow-hidden">
@@ -1397,8 +1433,13 @@
                           <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${exam.subject}</span>
                           <span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${exam.month}</span>
                         </div>
-                        <h5 class="font-bold text-gray-800 text-lg mb-1">${exam.subject}</h5>
-                        <p class="text-sm text-gray-500 mb-4"><i class="fas fa-user-tie"></i> គ្រូ៖ ${exam.teacherName}</p>
+                        <h5 class="font-bold text-gray-800 text-lg mb-2">${exam.subject}</h5>
+                        <div class="flex items-center gap-2 mb-4">
+                           <div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">
+                              ${exam.teacherPhoto ? `<img src="${exam.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}
+                           </div>
+                           <p class="text-sm text-gray-600 font-semibold truncate">${exam.teacherName}</p>
+                        </div>
                       </div>
                       ${hasTaken ? `
                         <button onclick="window.startExam('${exam.teacherId}', '${exam.month}', false)" class="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> មើលលទ្ធផល</button>
@@ -1418,19 +1459,27 @@
             if (availableLessons.length > 0) {
               listContent = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  ${availableLessons.map(lesson => `
+                  ${availableLessons.map(lesson => {
+                    const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === lesson.month && (r.teacherId === lesson.teacherId || (!r.teacherId && lesson.teacherId === 'legacy')) && r.isLesson);
+                    return `
                     <div class="border border-purple-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition relative overflow-hidden">
+                      ${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">បានអាន</div>` : ''}
                       <div>
                         <div class="flex justify-between items-start mb-3">
                           <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${lesson.subject}</span>
                           <span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${lesson.month}</span>
                         </div>
-                        <h5 class="font-bold text-gray-800 text-lg mb-1">${lesson.subject}</h5>
-                        <p class="text-sm text-gray-500 mb-4"><i class="fas fa-user-tie"></i> គ្រូ៖ ${lesson.teacherName}</p>
+                        <h5 class="font-bold text-gray-800 text-lg mb-2">${lesson.subject}</h5>
+                        <div class="flex items-center gap-2 mb-4">
+                           <div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">
+                              ${lesson.teacherPhoto ? `<img src="${lesson.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}
+                           </div>
+                           <p class="text-sm text-gray-600 font-semibold truncate">${lesson.teacherName}</p>
+                        </div>
                       </div>
-                      <button onclick="window.startExam('${lesson.teacherId}', '${lesson.month}', true)" class="w-full bg-purple-600 text-white font-bold py-2 rounded-lg hover:bg-purple-700 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-book-reader"></i> ចូលអានមេរៀន</button>
+                      <button onclick="window.startExam('${lesson.teacherId}', '${lesson.month}', true)" class="w-full ${hasTaken ? 'bg-purple-100 text-purple-700' : 'bg-purple-600 text-white'} font-bold py-2 rounded-lg hover:bg-purple-700 hover:text-white shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-book-reader"></i> ចូលអានមេរៀន</button>
                     </div>
-                  `).join('')}
+                  `}).join('')}
                 </div>
               `;
             } else {
@@ -1685,31 +1734,65 @@
           </div>
         `;
       } else if (activeTab === 'reports') {
-        const filteredResults = myResults.filter(r => (repClass === 'All' || r.classLevel === repClass) && (repMonth === 'All' || r.month === repMonth));
+        const isLessonReport = reportType === 'lesson';
+        const filteredResults = myResults.filter(r => 
+           (repClass === 'All' || r.classLevel === repClass) && 
+           (repMonth === 'All' || r.month === repMonth) &&
+           (isLessonReport ? r.isLesson : !r.isLesson)
+        );
 
         rightPanelHtml = `
           <div class="flex justify-between items-center mb-6 border-b pb-4 flex-wrap gap-4">
-            <h3 class="text-xl text-gray-800 font-moul"><i class="fas fa-chart-bar text-blue-600 mr-2"></i> របាយការណ៍ពិន្ទុសិស្ស</h3>
+            <h3 class="text-xl text-gray-800 font-moul"><i class="fas fa-chart-bar text-blue-600 mr-2"></i> របាយការណ៍ពិន្ទុ និងមេរៀន</h3>
             <button onclick="window.printScoreReport()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-50 transition shadow-sm flex items-center gap-2">
               <i class="fas fa-print text-blue-600"></i> បោះពុម្ពរបាយការណ៍
             </button>
           </div>
+
+          <div class="flex mb-5 bg-gray-100 p-1 rounded-xl w-full max-w-sm mx-auto sm:mx-0">
+             <button class="flex-1 py-2 font-bold text-sm sm:text-base rounded-lg transition ${!isLessonReport ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" onclick="window.setReportType('exam')">
+               <i class="fas fa-clipboard-check mr-1"></i> ពិន្ទុប្រឡង
+             </button>
+             <button class="flex-1 py-2 font-bold text-sm sm:text-base rounded-lg transition ${isLessonReport ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}" onclick="window.setReportType('lesson')">
+               <i class="fas fa-book-reader mr-1"></i> ការអានមេរៀន
+             </button>
+          </div>
+
           <div class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
             <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមថ្នាក់</label><select id="repClass" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${repClass==='All'?'selected':''}>គ្រប់ថ្នាក់ទាំងអស់</option>${classes.map(c=>`<option value="${c}" ${repClass===c?'selected':''}>ថ្នាក់ទី ${c}</option>`).join('')}</select></div>
             <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមខែ</label><select id="repMonth" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${repMonth==='All'?'selected':''}>គ្រប់ខែទាំងអស់</option>${months.map(m=>`<option value="${m}" ${repMonth===m?'selected':''}>${m}</option>`).join('')}</select></div>
           </div>
           <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
             <table class="w-full text-left border-collapse">
-              <thead><tr class="bg-gray-50 text-gray-600 border-b border-gray-200 text-sm"><th class="p-4 font-bold">សិស្ស</th><th class="p-4 font-bold">ថ្នាក់/ខែ</th><th class="p-4 font-bold text-center">ពិន្ទុ</th><th class="p-4 font-bold text-center">ស្ថានភាព</th><th class="p-4 font-bold text-right">សកម្មភាព</th></tr></thead>
+              <thead>
+                 <tr class="bg-gray-50 text-gray-600 border-b border-gray-200 text-sm">
+                    <th class="p-4 font-bold">សិស្ស</th>
+                    <th class="p-4 font-bold">ថ្នាក់/ខែ</th>
+                    ${!isLessonReport ? `
+                    <th class="p-4 font-bold text-center">ពិន្ទុ</th>
+                    <th class="p-4 font-bold text-center">ស្ថានភាព</th>
+                    <th class="p-4 font-bold text-right">សកម្មភាព</th>
+                    ` : `
+                    <th class="p-4 font-bold text-center">កាលបរិច្ឆេទអាន</th>
+                    `}
+                 </tr>
+              </thead>
               <tbody class="text-sm">
-                ${filteredResults.length > 0 ? filteredResults.sort((a,b)=>b.timestamp-a.timestamp).map((r, i) => `
+                ${filteredResults.length > 0 ? filteredResults.sort((a,b)=>b.timestamp-a.timestamp).map((r, i) => {
+                  const readDate = r.timestamp && r.timestamp.toDate ? new Date(r.timestamp.toDate()).toLocaleString('km-KH', {dateStyle:'short', timeStyle:'short'}) : '';
+                  return `
                   <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
                     <td class="p-4"><div class="font-bold text-gray-800">${r.studentName}</div><div class="text-xs text-gray-500">ID: ${r.studentId}</div></td>
                     <td class="p-4"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold text-xs">ថ្នាក់ ${r.classLevel}</span><div class="text-xs text-gray-500 mt-1">${r.month}</div></td>
+                    ${!isLessonReport ? `
                     <td class="p-4 text-center"><span class="font-extrabold text-lg ${r.needsGrading ? 'text-gray-400' : 'text-blue-600'}">${r.score}/${r.totalPoints}</span></td>
                     <td class="p-4 text-center">${r.needsGrading ? `<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md text-xs font-bold border border-yellow-200"><i class="fas fa-clock mr-1"></i> រង់ចាំការកែ</span>` : `<span class="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold border border-green-200"><i class="fas fa-check mr-1"></i> កែរួចរាល់</span>`}</td>
                     <td class="p-4 text-right"><button onclick="window.openGrading('${r.id}')" class="px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition ${r.needsGrading ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}">${r.needsGrading ? 'កែពិន្ទុ' : 'មើលឡើងវិញ'}</button></td>
-                  </tr>`).join('') : `<tr><td colspan="5" class="p-8 text-center text-gray-500"><i class="fas fa-folder-open text-3xl mb-2 text-gray-300"></i><br>មិនទាន់មានទិន្នន័យពិន្ទុទេ...</td></tr>`}
+                    ` : `
+                    <td class="p-4 text-center"><span class="text-sm text-gray-600 font-semibold"><i class="fas fa-calendar-check text-green-500 mr-1"></i> ${readDate}</span></td>
+                    `}
+                  </tr>`;
+                }).join('') : `<tr><td colspan="${!isLessonReport ? 5 : 3}" class="p-8 text-center text-gray-500"><i class="fas fa-folder-open text-3xl mb-2 text-gray-300"></i><br>មិនទាន់មានទិន្នន័យទេ...</td></tr>`}
               </tbody>
             </table>
           </div>
@@ -1777,9 +1860,10 @@
               <button onclick="window.openTeacherPassModal()" class="text-sm bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg font-bold hover:bg-gray-200 transition border"><i class="fas fa-key"></i> ប្តូរពាក្យសម្ងាត់</button>
             </div>
             <form onsubmit="window.saveTeacherProfile(event)">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div><label class="block text-gray-700 text-sm font-bold mb-1">ឈ្មោះលោកគ្រូ/អ្នកគ្រូ <span class="text-red-500">*</span></label><input type="text" id="tProfileName" value="${myProfile.name || ''}" required class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-50" placeholder="ឧ. វង្ស សាណូវុទ្ធ"></div>
                 <div><label class="block text-gray-700 text-sm font-bold mb-1">មុខវិជ្ជា <span class="text-red-500">*</span></label><input type="text" id="tProfileSubject" value="${myProfile.subject || ''}" required class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-50" placeholder="ឧ. ព័ត៌មានវិទ្យា"></div>
+                <div><label class="block text-gray-700 text-sm font-bold mb-1">តំណភ្ជាប់រូបថត (URL)</label><input type="text" id="tProfilePhoto" value="${myProfile.photoURL || ''}" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-50" placeholder="https://..."></div>
               </div>
               <button type="submit" class="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition shadow-sm"><i class="fas fa-save"></i> រក្សាទុកព័ត៌មាន</button>
             </form>
@@ -1788,7 +1872,7 @@
           <!-- ផ្នែកទិន្នន័យសិស្សរួម -->
           <div class="bg-blue-50 p-6 rounded-xl border border-blue-100 mb-6 shadow-sm">
             <h4 class="font-bold text-gray-800 mb-2"><i class="fas fa-sync-alt text-blue-500 mr-1"></i> តំណភ្ជាប់ Google Sheet សម្រាប់ទាញយកសិស្ស</h4>
-            <p class="text-sm text-gray-600 mb-3">ទិន្នន័យសិស្សប្រើប្រាស់រួមគ្នាជាសកល! គ្រូណាក៏អាចទាញយកបាន។</p>
+            <p class="text-sm text-gray-600 mb-3">ទិន្នន័យសិស្សប្រើប្រាស់រួមគ្នា សម្រាប់វិទ្យាល័យកូប! គ្រូណាក៏អាចទាញយកបាន។</p>
             <input type="text" id="sheetUrl" class="w-full p-3.5 border border-blue-200 rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 outline-none bg-white" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vSXTVswNJxJYRN6aSMd5o0cFK2pbF8JWwzPiAht4JLNUs9g6DjbNJdYcIaoOBjkiS0KdeZJMyYzRdAE/pub?output=csv">
             <button id="btnSync" onclick="window.syncStudents()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"><i class="fas fa-cloud-download-alt"></i> ទាញយកទិន្នន័យចូលប្រព័ន្ធ</button>
           </div>
@@ -1852,7 +1936,7 @@
           <div class="flex justify-between items-center mb-6 border-b pb-4 flex-wrap gap-4">
             <div class="flex items-center gap-3">
               <button onclick="window.setTeacherTab('settings')" class="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition"><i class="fas fa-arrow-left text-xl"></i></button>
-              <h3 class="text-xl text-gray-800 font-moul">បញ្ជីសិស្សសកល (${studentsData.length} នាក់)</h3>
+              <h3 class="text-xl text-gray-800 font-moul">បញ្ជីសិស្សវិទ្យាល័យកូប (${studentsData.length} នាក់)</h3>
             </div>
             <div class="flex items-center gap-3">
               <button onclick="window.printStudentList()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold hover:bg-gray-50 transition shadow-sm flex items-center gap-2"><i class="fas fa-print text-blue-600"></i> បោះពុម្ព</button>
@@ -1935,7 +2019,9 @@
         <div class="max-w-6xl mx-auto mt-4 sm:mt-8 flex flex-col lg:flex-row gap-6">
           <div class="w-full lg:w-72 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-fit lg:sticky lg:top-24">
             <div class="flex items-center gap-3 mb-6 pb-4 border-b">
-              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl"><i class="fas fa-user-shield"></i></div>
+              <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl overflow-hidden shrink-0 border border-blue-200">
+                 ${myProfile.photoURL ? `<img src="${myProfile.photoURL}" class="w-full h-full object-cover">` : `<i class="fas fa-user-shield"></i>`}
+              </div>
               <div class="flex-1 overflow-hidden">
                 <h2 class="text-gray-800 font-moul truncate" title="${myProfile.name || 'គណនីគ្រូ'}">${myProfile.name || 'គណនីគ្រូ'}</h2>
                 <p class="text-xs text-blue-600 font-bold truncate">${myProfile.subject || 'មិនទាន់កំណត់មុខវិជ្ជា'}</p>
