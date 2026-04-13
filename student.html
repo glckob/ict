@@ -108,10 +108,15 @@
     let studentsData = [], questions = [], results = [], teachersData = []; 
     let firebaseUser = null, currentUser = null, userRole = null;    
     let loadingData = true, errorMsg = '';
+    
+    // State
     let selectedMonth = '', selectedTeacherId = '', quizStarted = false, quizSubmitted = false;
     let currentAnswers = {}, currentScore = { got: 0, total: 0, needsGrading: false };
     let availableQuestions = [], studentTab = 'exams', currentQuizIsLesson = false;
     let internetTime = new Date(), currentMonthName = '', timeLeft = 0, timerInterval = null, quizStartTimestamp = null, currentQuizDuration = 60 * 60;
+    
+    let viewingResultId = null; // New state to view detailed result
+    let lastResultId = null;    // Tracks the newly submitted result ID
     let isChangePassModalOpen = false;
 
     const standardMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
@@ -132,7 +137,6 @@
               currentUser = JSON.parse(savedSession);
               userRole = 'student';
           } else {
-              // Redirect ទៅកាន់ទំព័រ Login បើមិនទាន់ចូលគណនី
               window.location.href = 'index.html';
               return;
           }
@@ -166,6 +170,13 @@
       onSnapshot(query(tCollection), (snapshot) => { teachersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })); if (userRole) renderApp(); });
     }
 
+    const renderMath = () => {
+        document.querySelectorAll('.ql-formula').forEach(f => {
+            const tex = f.getAttribute('data-value');
+            if(tex) try { katex.render(tex, f, { throwOnError: false }); } catch(e){}
+        });
+    };
+
     window.togglePassword = (inputId, iconEl) => {
         const input = document.getElementById(inputId);
         if(input.type === 'password') { input.type = 'text'; iconEl.classList.replace('fa-eye', 'fa-eye-slash'); iconEl.classList.add('text-blue-500'); } 
@@ -176,7 +187,7 @@
       if (timerInterval) clearInterval(timerInterval); 
       userRole = null; currentUser = null; 
       try { localStorage.removeItem('studentSession'); } catch(e){}
-      window.location.href = 'index.html'; // Redirect to Smart Login
+      window.location.href = 'index.html';
     };
 
     function updateTimerUI() {
@@ -214,7 +225,7 @@
       if (isLesson) {
          availableQuestions = [...validQuestions].sort((a, b) => (a.displayMode === 'random' && b.displayMode === 'random') ? Math.random() - 0.5 : 0);
          quizStarted = true; quizSubmitted = false; renderApp();
-         setTimeout(() => { document.querySelectorAll('.ql-formula').forEach(f => { const tex = f.getAttribute('data-value'); if(tex) try { katex.render(tex, f, { throwOnError: false }); } catch(e){} }); }, 100);
+         setTimeout(renderMath, 100);
          return; 
       }
       
@@ -233,12 +244,9 @@
       
       if (!savedQuestionIds) {
         let fixedQs = validQuestions.filter(q => q.displayMode === 'fixed' || !q.displayMode), randomQs = validQuestions.filter(q => q.displayMode === 'random').sort(() => Math.random() - 0.5);
-        let currentTotal = 0, selectedQs = [], orderMap = {};
-        for (const q of fixedQs) { selectedQs.push(q); if (q.type !== 'lesson') currentTotal += Number(q.points) || 0; }
-        for (const q of randomQs) {
-            if (q.type === 'lesson') selectedQs.push(q);
-            else if (currentTotal + (Number(q.points) || 0) <= 50) { selectedQs.push(q); currentTotal += Number(q.points) || 0; }
-        }
+        let selectedQs = [], orderMap = {};
+        for (const q of fixedQs) { selectedQs.push(q); }
+        for (const q of randomQs) { selectedQs.push(q); }
         selectedQs.sort(() => Math.random() - 0.5);
         for (const q of selectedQs) {
             if (q.type && q.type.includes('multiple_choice') && q.options) {
@@ -272,7 +280,7 @@
       const savedAns = localStorage.getItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`);
       currentAnswers = savedAns ? JSON.parse(savedAns) : {};
       renderApp(); startTimerCountdown();
-      setTimeout(() => { document.querySelectorAll('.ql-formula').forEach(f => { const tex = f.getAttribute('data-value'); if(tex) try { katex.render(tex, f, { throwOnError: false }); } catch(e){} }); }, 100);
+      setTimeout(renderMath, 100);
     };
 
     window.selectAnswer = (qId, val) => {
@@ -329,14 +337,21 @@
       let tSubj = 'ទូទៅ'; if (selectedTeacherId !== 'legacy') { const tDoc = teachersData.find(t => t.uid === selectedTeacherId); if (tDoc) tSubj = tDoc.subject || tSubj; }
 
       try {
-        await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), { studentId: currentUser.ID, studentName: `${currentUser.FNAME} ${currentUser.LNAME}`, classLevel: currentUser.CLASS, teacherId: selectedTeacherId, subject: tSubj, month: selectedMonth, score: gotScore, totalPoints: totalPts, answers: originalAnswers, questionScores: questionScores, needsGrading: hasEssay, isLesson: currentQuizIsLesson, timestamp: serverTimestamp() });
+        const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), { studentId: currentUser.ID, studentName: `${currentUser.FNAME} ${currentUser.LNAME}`, classLevel: currentUser.CLASS, teacherId: selectedTeacherId, subject: tSubj, month: selectedMonth, score: gotScore, totalPoints: totalPts, answers: originalAnswers, questionScores: questionScores, needsGrading: hasEssay, isLesson: currentQuizIsLesson, timestamp: serverTimestamp() });
+        lastResultId = docRef.id;
         localStorage.removeItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_time_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_questions_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_options_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); 
         quizSubmitted = true; quizStarted = false; renderApp();
       } catch (err) { window.customAlert("មានបញ្ហាក្នុងការរក្សាទុក។"); }
     };
 
     window.pauseQuiz = () => { quizStarted = false; if (timerInterval) clearInterval(timerInterval); renderApp(); };
-    window.resetQuizState = () => { quizSubmitted = false; quizStarted = false; selectedMonth = ''; selectedTeacherId = ''; currentQuizIsLesson = false; renderApp(); };
+    window.resetQuizState = () => { 
+        quizSubmitted = false; quizStarted = false; selectedMonth = ''; selectedTeacherId = ''; 
+        currentQuizIsLesson = false; viewingResultId = null; lastResultId = null; renderApp(); 
+    };
+
+    window.viewResult = (id) => { viewingResultId = id; quizSubmitted = false; quizStarted = false; renderApp(); setTimeout(renderMath, 100); };
+    window.closeViewResult = () => { viewingResultId = null; renderApp(); };
 
     window.openChangePassModal = () => { isChangePassModalOpen = true; renderApp(); };
     window.closeChangePassModal = () => { isChangePassModalOpen = false; renderApp(); };
@@ -386,9 +401,68 @@
       });
       const availableExams = Object.values(examsMap), availableLessons = Object.values(lessonsMap);
       let contentHtml = '';
-      const existingResult = (selectedTeacherId && selectedMonth) ? results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')) && (currentQuizIsLesson ? r.isLesson : !r.isLesson)) : null;
 
-      if (quizSubmitted) {
+      if (viewingResultId) {
+        const res = results.find(r => r.id === viewingResultId);
+        if (!res) { viewingResultId = null; return renderStudent(); }
+        const examQuestions = questions.filter(q => res.answers && res.answers.hasOwnProperty(q.id) && q.type !== 'lesson');
+
+        contentHtml = `
+          <div class="space-y-6 relative">
+            <div class="flex justify-start mb-2"><button onclick="window.closeViewResult()" class="flex items-center gap-2 text-blue-700 hover:text-blue-900 font-bold bg-blue-50 hover:bg-blue-100 px-5 py-2.5 rounded-xl border border-blue-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅក្រោយ</button></div>
+            
+            <div class="bg-gray-50 border border-gray-200 p-6 rounded-xl text-center shadow-sm">
+              <h3 class="text-xl font-bold text-gray-800 mb-4">លទ្ធផល: ${res.subject} (ខែ${res.month})</h3>
+              ${res.needsGrading ? 
+                  `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-6 py-2 rounded-full border border-yellow-200">រង់ចាំគ្រូកែ</span>` 
+                  : `<span class="font-extrabold text-blue-600 text-4xl">${res.score} / ${res.totalPoints} <span class="text-lg text-gray-500 font-medium">ពិន្ទុ</span></span>`}
+            </div>
+
+            <div class="space-y-6 mt-4">
+                ${examQuestions.map((q, i) => {
+                  const sAnswer = res.answers ? res.answers[q.id] : null;
+                  const qScore = res.questionScores ? (res.questionScores[q.id] || 0) : 0;
+                  const isCorrect = qScore > 0 && qScore == q.points;
+                  const isPending = q.type === 'essay' && res.needsGrading;
+                  
+                  let headerClass = isPending ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : (isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800');
+                  let borderClass = isPending ? 'border-yellow-200' : (isCorrect ? 'border-green-200' : 'border-red-200');
+                  let iconClass = isPending ? 'fa-clock' : (isCorrect ? 'fa-check-circle' : 'fa-times-circle');
+
+                  return `
+                  <div class="border rounded-xl overflow-hidden shadow-sm ${borderClass}">
+                    <div class="flex justify-between items-center p-3 border-b ${headerClass}">
+                      <span class="font-bold"><i class="fas ${iconClass} mr-1"></i> សំណួរទី ${i+1}</span>
+                      <span class="font-bold bg-white px-3 py-1 rounded shadow-sm border ${borderClass}">
+                        ${isPending ? 'រង់ចាំកែ' : `${qScore} / ${q.points} ពិន្ទុ`}
+                      </span>
+                    </div>
+                    <div class="p-5 bg-white">
+                        <div class="ql-editor p-0 bg-transparent border-none text-gray-800 mb-4">${q.text}</div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <p class="text-sm text-gray-500 font-semibold mb-3"><i class="fas fa-reply text-blue-400"></i> ចម្លើយរបស់អ្នក៖</p>
+                          ${q.type === 'essay' ? `<p class="text-gray-800 whitespace-pre-wrap font-medium">${sAnswer || '<i class="text-gray-400">មិនបានឆ្លើយ</i>'}</p>` : `
+                            <div class="space-y-2">
+                              ${q.options.map((opt, oIdx) => {
+                                 let isStudentSelected = Array.isArray(sAnswer) ? sAnswer.includes(oIdx) : sAnswer == oIdx;
+                                 let isActuallyCorrect = Array.isArray(q.correctAnswer) ? q.correctAnswer.includes(oIdx) : q.correctAnswer == oIdx;
+                                 
+                                 let optBg = isStudentSelected ? (isActuallyCorrect ? 'bg-green-100 border-green-400 font-bold text-green-800' : 'bg-red-100 border-red-400 font-bold text-red-800') : (isActuallyCorrect ? 'bg-green-50 border-green-300 border-dashed text-green-700' : 'bg-white border-gray-200 text-gray-600');
+                                 let iconHtml = isStudentSelected ? '<i class="fas fa-check-circle ' + (isActuallyCorrect ? 'text-green-600' : 'text-red-600') + '"></i>' : (isActuallyCorrect ? '<i class="fas fa-check text-green-500"></i>' : '');
+                                 
+                                 return `<div class="px-4 py-3 border rounded-lg flex items-center justify-between transition ${optBg}">
+                                           <span>${String.fromCharCode(65 + oIdx)}. ${opt}</span>${iconHtml}
+                                         </div>`;
+                              }).join('')}
+                            </div>`}
+                        </div>
+                    </div>
+                  </div>`;
+                }).join('')}
+            </div>
+          </div>
+        `;
+      } else if (quizSubmitted) {
         const res = currentScore, isPending = res.needsGrading;
         contentHtml = `
           <div class="text-center py-8">
@@ -396,18 +470,11 @@
             <h2 class="text-2xl font-bold text-gray-800 mb-2">${currentQuizIsLesson ? 'ការអានមេរៀនបានកត់ត្រា!' : (isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!')}</h2>
             <p class="text-lg text-gray-600 mt-2 mb-4">${currentQuizIsLesson ? 'កំណត់ត្រាអានមេរៀនរបស់អ្នកត្រូវបានបញ្ជូនទៅកាន់គ្រូរួចរាល់។' : (isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។')}</p>
             ${currentQuizIsLesson ? '' : `<div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto"><p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` : `<span class="font-extrabold text-blue-600 text-4xl">${res.got} / ${res.total}</span>`}</div>`}
-            <button onclick="window.resetQuizState()" class="mt-8 bg-gray-200 text-gray-800 px-6 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition shadow-sm"><i class="fas fa-home mr-1"></i> ត្រឡប់ទៅបញ្ជី${currentQuizIsLesson ? 'មេរៀន' : 'វញ្ញាសា'}</button>
-          </div>
-        `;
-      } else if (existingResult && !currentQuizIsLesson && !quizStarted) {
-        const res = existingResult, isPending = res.needsGrading;
-        contentHtml = `
-          <div class="text-center py-8">
-            <i class="fas ${isPending ? 'fa-clock text-yellow-500' : 'fa-check-circle text-green-500'} text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">${isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!'}</h2>
-            <p class="text-lg text-gray-600 mt-2 mb-4">${isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។'}</p>
-            <div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto"><p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` : `<span class="font-extrabold text-blue-600 text-4xl">${res.score} / ${res.totalPoints}</span>`}</div>
-            <button onclick="window.resetQuizState()" class="mt-8 bg-gray-200 text-gray-800 px-6 py-2.5 rounded-lg hover:bg-gray-300 font-semibold transition shadow-sm"><i class="fas fa-home mr-1"></i> ត្រឡប់ទៅបញ្ជីវញ្ញាសា</button>
+            
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                ${!currentQuizIsLesson && lastResultId ? `<button onclick="window.viewResult('${lastResultId}')" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>` : ''}
+                <button onclick="window.resetQuizState()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-xl hover:bg-gray-300 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-home"></i> ត្រឡប់ទៅបញ្ជី${currentQuizIsLesson ? 'មេរៀន' : 'វញ្ញាសា'}</button>
+            </div>
           </div>
         `;
       } else if (quizStarted && currentQuizIsLesson) {
@@ -416,7 +483,7 @@
             <div class="flex justify-start mb-2"><button onclick="window.resetQuizState()" class="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-bold bg-purple-50 hover:bg-purple-100 px-5 py-2.5 rounded-xl border border-purple-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីមេរៀនវិញ</button></div>
             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 shadow-sm"><p class="font-bold text-purple-800 text-lg"><i class="fas fa-book-reader"></i> កំពុងអានមេរៀន៖ ខែ${selectedMonth}</p></div>
             ${availableQuestions.map(q => `<div class="border-b pb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-purple-100 relative"><div class="absolute -left-3 -top-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold shadow-md"><i class="fas fa-book-open"></i></div><div class="ql-editor p-0 bg-transparent border-none text-base sm:text-lg mb-2 text-gray-800 font-medium">${q.text}</div></div>`).join('')}
-            ${existingResult ? `<button onclick="window.resetQuizState()" class="w-full bg-gray-500 text-white font-bold py-4 rounded-xl hover:bg-gray-600 transition text-lg shadow-md flex items-center justify-center gap-2"><i class="fas fa-arrow-left"></i> ត្រឡប់ក្រោយ (អ្នកបានអានរួចរាល់)</button>` : `<button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>`}
+            <button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>
           </div>
         `;
       } else if (quizStarted && !currentQuizIsLesson) {
@@ -449,7 +516,7 @@
             if (availableExams.length > 0) {
               listContent = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${availableExams.map(exam => {
                     const examMonthIndex = standardMonths.indexOf(exam.month), currentMonthIndex = standardMonths.indexOf(currentMonthName), isExpired = examMonthIndex !== -1 && currentMonthIndex !== -1 && examMonthIndex < currentMonthIndex, hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === exam.month && (r.teacherId === exam.teacherId || (!r.teacherId && exam.teacherId === 'legacy')) && !r.isLesson);
-                    return `<div class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">រួចរាល់</div>` : (isExpired ? `<div class="absolute -right-6 top-4 bg-red-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">ផុតកំណត់</div>` : '')}<div><div class="flex justify-between items-start mb-3"><span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${exam.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${exam.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${exam.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${exam.teacherPhoto ? `<img src="${exam.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${exam.teacherName}</p></div></div>${hasTaken ? `<button onclick="window.startExam('${exam.teacherId}', '${exam.month}', false)" class="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> មើលលទ្ធផល</button>` : isExpired ? `<button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2"><i class="fas fa-times-circle"></i> មិនអាចប្រឡងបានទេ</button>` : `<button onclick="window.startExam('${exam.teacherId}', '${exam.month}', false)" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-play-circle"></i> ចាប់ផ្តើមប្រឡង</button>`}</div>`}).join('')}</div>`;
+                    return `<div class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">រួចរាល់</div>` : (isExpired ? `<div class="absolute -right-6 top-4 bg-red-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">ផុតកំណត់</div>` : '')}<div><div class="flex justify-between items-start mb-3"><span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${exam.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${exam.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${exam.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${exam.teacherPhoto ? `<img src="${exam.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${exam.teacherName}</p></div></div>${hasTaken ? `<button onclick="window.viewResult('${hasTaken.id}')" class="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-100 transition"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>` : isExpired ? `<button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2"><i class="fas fa-times-circle"></i> មិនអាចប្រឡងបានទេ</button>` : `<button onclick="window.startExam('${exam.teacherId}', '${exam.month}', false)" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-play-circle"></i> ចាប់ផ្តើមប្រឡង</button>`}</div>`}).join('')}</div>`;
             } else { listContent = `<div class="text-center p-8 bg-gray-50 rounded-xl border border-dashed"><i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">មិនមានវិញ្ញាសាបើកឲ្យប្រឡងទេនៅពេលនេះ...</p></div>`; }
         } else {
             if (availableLessons.length > 0) {
@@ -521,7 +588,6 @@
       renderHeader();
       const container = document.getElementById('app-container');
       
-      // ប្រសិនបើគ្មាន Session ទេ ឲ្យត្រឡប់ទៅ index.html (Smart Login)
       if (!userRole) { 
           window.location.href = 'index.html'; 
       } else if (userRole === 'student') { 
