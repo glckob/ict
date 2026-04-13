@@ -115,8 +115,8 @@
     let availableQuestions = [], studentTab = 'exams', currentQuizIsLesson = false;
     let internetTime = new Date(), currentMonthName = '', timeLeft = 0, timerInterval = null, quizStartTimestamp = null, currentQuizDuration = 60 * 60;
     
-    let viewingResultId = null; // New state to view detailed result
-    let lastResultId = null;    // Tracks the newly submitted result ID
+    let viewingResultId = null; 
+    let lastResultId = null;    
     let isChangePassModalOpen = false;
 
     const standardMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
@@ -215,9 +215,9 @@
       }
 
       let validQuestions = questions.filter(q => {
-        const qClasses = Array.isArray(q.classLevel) ? q.classLevel : [q.classLevel];
+        const qClasses = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
         const matchTeacher = q.teacherId === tId || (tId === 'legacy' && !q.teacherId);
-        return qClasses.includes(currentUser.CLASS) && q.month === selectedMonth && q.status === 'online' && matchTeacher && (isLesson ? q.type === 'lesson' : q.type !== 'lesson');
+        return qClasses.includes(String(currentUser.CLASS)) && q.month === selectedMonth && q.status === 'online' && matchTeacher && (isLesson ? q.type === 'lesson' : q.type !== 'lesson');
       });
 
       if (validQuestions.length === 0) { window.customAlert(isLesson ? 'មិនមានមេរៀនទេ!' : 'មិនមានសំណួរសម្រាប់វិញ្ញាសានេះទេ!'); return; }
@@ -387,8 +387,8 @@
     function renderStudent() {
       let examsMap = {}, lessonsMap = {};
       questions.forEach(q => {
-        const qClasses = Array.isArray(q.classLevel) ? q.classLevel : [q.classLevel];
-        if (qClasses.includes(currentUser.CLASS) && q.status === 'online') {
+        const qClasses = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
+        if (qClasses.includes(String(currentUser.CLASS)) && q.status === 'online') {
             const tId = q.teacherId || 'legacy', key = `${tId}_${q.month}`;
             let targetMap = q.type === 'lesson' ? lessonsMap : examsMap;
             if (!targetMap[key]) {
@@ -401,6 +401,7 @@
       });
       const availableExams = Object.values(examsMap), availableLessons = Object.values(lessonsMap);
       let contentHtml = '';
+      const existingResult = (selectedTeacherId && selectedMonth) ? results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')) && (currentQuizIsLesson ? r.isLesson : !r.isLesson)) : null;
 
       if (viewingResultId) {
         const res = results.find(r => r.id === viewingResultId);
@@ -477,13 +478,30 @@
             </div>
           </div>
         `;
+      } else if (existingResult && !currentQuizIsLesson && !quizStarted) {
+        const res = existingResult, isPending = res.needsGrading;
+        contentHtml = `
+          <div class="text-center py-8">
+            <i class="fas ${isPending ? 'fa-clock text-yellow-500' : 'fa-check-circle text-green-500'} text-6xl mb-4"></i>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">${isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!'}</h2>
+            <p class="text-lg text-gray-600 mt-2 mb-4">${isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។'}</p>
+            <div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto"><p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` : `<span class="font-extrabold text-blue-600 text-4xl">${res.score} / ${res.totalPoints}</span>`}</div>
+            
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button onclick="window.viewResult('${res.id}')" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>
+                <button onclick="window.resetQuizState()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-xl hover:bg-gray-300 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-home"></i> ត្រឡប់ទៅបញ្ជីវញ្ញាសា</button>
+            </div>
+          </div>
+        `;
       } else if (quizStarted && currentQuizIsLesson) {
         contentHtml = `
           <div class="space-y-6 relative">
             <div class="flex justify-start mb-2"><button onclick="window.resetQuizState()" class="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-bold bg-purple-50 hover:bg-purple-100 px-5 py-2.5 rounded-xl border border-purple-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីមេរៀនវិញ</button></div>
             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 shadow-sm"><p class="font-bold text-purple-800 text-lg"><i class="fas fa-book-reader"></i> កំពុងអានមេរៀន៖ ខែ${selectedMonth}</p></div>
             ${availableQuestions.map(q => `<div class="border-b pb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-purple-100 relative"><div class="absolute -left-3 -top-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold shadow-md"><i class="fas fa-book-open"></i></div><div class="ql-editor p-0 bg-transparent border-none text-base sm:text-lg mb-2 text-gray-800 font-medium">${q.text}</div></div>`).join('')}
-            <button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>
+            ${existingResult ? 
+              `<button onclick="window.resetQuizState()" class="w-full bg-gray-500 text-white font-bold py-4 rounded-xl hover:bg-gray-600 transition text-lg shadow-md flex items-center justify-center gap-2"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីមេរៀនវិញ (បានអានរួច)</button>` 
+              : `<button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>`}
           </div>
         `;
       } else if (quizStarted && !currentQuizIsLesson) {
@@ -522,7 +540,7 @@
             if (availableLessons.length > 0) {
               listContent = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${availableLessons.map(lesson => {
                     const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === lesson.month && (r.teacherId === lesson.teacherId || (!r.teacherId && lesson.teacherId === 'legacy')) && r.isLesson);
-                    return `<div class="border border-purple-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">បានអាន</div>` : ''}<div><div class="flex justify-between items-start mb-3"><span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${lesson.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${lesson.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${lesson.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${lesson.teacherPhoto ? `<img src="${lesson.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${lesson.teacherName}</p></div></div><button onclick="window.startExam('${lesson.teacherId}', '${lesson.month}', true)" class="w-full ${hasTaken ? 'bg-purple-100 text-purple-700' : 'bg-purple-600 text-white'} font-bold py-2 rounded-lg hover:bg-purple-700 hover:text-white shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-book-reader"></i> ${hasTaken ? 'អានម្តងទៀត' : 'ចូលអានមេរៀន'}</button></div>`}).join('')}</div>`;
+                    return `<div class="border border-purple-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">បានអាន</div>` : ''}<div><div class="flex justify-between items-start mb-3"><span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${lesson.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${lesson.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${lesson.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${lesson.teacherPhoto ? `<img src="${lesson.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${lesson.teacherName}</p></div></div><button onclick="window.startExam('${lesson.teacherId}', '${lesson.month}', true)" class="w-full ${hasTaken ? 'bg-gray-100 text-gray-600' : 'bg-purple-600 text-white'} font-bold py-2 rounded-lg hover:bg-gray-200 hover:text-gray-800 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-book-reader"></i> ${hasTaken ? 'អានម្តងទៀត' : 'ចូលអានមេរៀន'}</button></div>`}).join('')}</div>`;
             } else { listContent = `<div class="text-center p-8 bg-purple-50 rounded-xl border border-dashed border-purple-200"><i class="fas fa-book text-4xl text-purple-300 mb-3"></i><p class="text-purple-600">មិនទាន់មានមេរៀនសម្រាប់អ្នកទេ...</p></div>`; }
         }
 
