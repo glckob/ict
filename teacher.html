@@ -1239,45 +1239,50 @@
       const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
 
       return `
-        <div class="max-w-6xl mx-auto mt-4 sm:mt-8 flex flex-col lg:flex-row gap-6">
-          <div class="w-full lg:w-72 bg-white p-5 rounded-2xl shadow-sm border border-gray-100 h-fit lg:sticky lg:top-24">
-            <div class="flex items-center gap-3 mb-6 pb-4 border-b">
+        <div class="w-full px-2 sm:px-6 mx-auto mt-4 sm:mt-6 flex flex-col gap-4">
+          <!-- Top Menu Bar -->
+          <div class="w-full bg-white p-4 rounded-2xl shadow-sm border border-gray-200 flex flex-col xl:flex-row items-center gap-4">
+            
+            <!-- Profile Info -->
+            <div class="flex items-center gap-3 w-full xl:w-auto border-b xl:border-b-0 xl:border-r pb-4 xl:pb-0 xl:pr-4 border-gray-200 shrink-0">
               <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-xl overflow-hidden shrink-0 border border-blue-200">
                  ${myProfile.photoURL ? `<img src="${myProfile.photoURL}" class="w-full h-full object-cover">` : `<i class="fas fa-user-shield"></i>`}
               </div>
-              <div class="flex-1 overflow-hidden">
-                <h2 class="text-gray-800 font-moul truncate" title="${myProfile.name || 'គណនីគ្រូ'}">${myProfile.name || 'គណនីគ្រូ'}</h2>
+              <div class="overflow-hidden">
+                <h2 class="text-gray-800 font-moul text-sm truncate" title="${myProfile.name || 'គណនីគ្រូ'}">${myProfile.name || 'គណនីគ្រូ'}</h2>
                 <p class="text-xs text-blue-600 font-bold truncate">${myProfile.subject || 'មិនទាន់កំណត់មុខវិជ្ជា'}</p>
                 <p class="text-xs text-gray-500 truncate" title="${firebaseUser.email}">${firebaseUser.email}</p>
               </div>
             </div>
             
-            <nav class="space-y-1.5">
-              <button onclick="window.setTeacherTab('add_questions')" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}">
-                <i class="fas fa-plus-circle w-5 text-center text-lg"></i> បញ្ចូល១ៗ (មានរូប)
+            <!-- Navigation -->
+            <nav class="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-2">
+              <button onclick="window.setTeacherTab('add_questions')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
+                <i class="fas fa-plus-circle"></i> បញ្ចូល១ៗ
               </button>
-              <button onclick="window.setTeacherTab('add_questions_table')" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions_table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}">
-                <i class="fas fa-table w-5 text-center text-lg"></i> បញ្ចូលជាតារាង (Excel)
+              <button onclick="window.setTeacherTab('add_questions_table')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions_table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
+                <i class="fas fa-table"></i> បញ្ចូលជាតារាង
               </button>
-              <button onclick="window.setTeacherTab('manage_q')" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm ${activeTab === 'manage_q' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}">
-                <i class="fas fa-folder w-5 text-center text-lg"></i> គ្រប់គ្រងសំណួរ
+              <button onclick="window.setTeacherTab('manage_q')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'manage_q' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
+                <i class="fas fa-folder"></i> គ្រប់គ្រងសំណួរ
               </button>
-              <button onclick="window.setTeacherTab('reports')" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm ${activeTab === 'reports' || activeTab === 'grading_view' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}">
-                <i class="fas fa-clipboard-list w-5 text-center text-lg"></i> របាយការណ៍/កែពិន្ទុ
+              <button onclick="window.setTeacherTab('reports')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'reports' || activeTab === 'grading_view' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
+                <i class="fas fa-clipboard-list"></i> របាយការណ៍/កែពិន្ទុ
               </button>
-              <a href="stcard.html" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm text-gray-600 hover:bg-gray-50">
-                <i class="fas fa-id-card w-5 text-center text-lg"></i> បោះពុម្ពកាតសិស្ស
+              <a href="stcard.html" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
+                <i class="fas fa-id-card"></i> កាតសិស្ស
               </a>
-              <a href="Structure.html" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm text-gray-600 hover:bg-gray-50">
-                <i class="fas fa-sitemap w-5 text-center text-lg"></i> រចនាសម្ព័ន្ធថ្នាក់
+              <a href="Structure.html" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
+                <i class="fas fa-sitemap"></i> រចនាសម្ព័ន្ធថ្នាក់
               </a>
-              <div class="border-t my-2 pt-2"></div>
-              <button onclick="window.setTeacherTab('settings')" class="w-full flex items-center gap-3 text-left p-3.5 rounded-xl font-bold transition text-sm ${activeTab === 'settings' || activeTab === 'manage_students' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}">
-                <i class="fas fa-users-cog w-5 text-center text-lg"></i> កំណត់គណនី & សិស្ស
+              <button onclick="window.setTeacherTab('settings')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'settings' || activeTab === 'manage_students' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
+                <i class="fas fa-users-cog"></i> កំណត់គណនី & សិស្ស
               </button>
             </nav>
           </div>
-          <div class="flex-1 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-gray-100 min-h-[500px]">
+          
+          <!-- Content Area -->
+          <div class="w-full bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-200 min-h-[500px]">
             ${rightPanelHtml}
           </div>
         </div>
