@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធទាញយករូបថតសិស្ស វិទ្យាល័យកូប</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        #photo-gallery::-webkit-scrollbar {
+            height: 6px;
+        }
+        #photo-gallery::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4">
+
+    <!-- Logo Section -->
+    <div id="header-logo" class="mb-6 animate-fade-in">
+        <img src="nv logo.png" alt="Logo" class="w-32 h-32 object-contain drop-shadow-lg" onerror="this.src='https://via.placeholder.com/150?text=NV+LOGO'">
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-2xl glass-morphism p-6 md:p-8 mb-6">
+        <div id="form-header" class="text-center mb-8">
+            <h1 class="text-2xl font-bold text-indigo-800 mb-2">ប្រព័ន្ធទាញយករូបថតសិស្ស វិទ្យាល័យកូប</h1>
+            <p class="text-gray-600 text-sm">សូមបញ្ចូលព័ត៌មានខាងក្រោមដើម្បីស្វែងរក</p>
+        </div>
+
+        <!-- Search Form -->
+        <div id="search-section" class="max-w-md mx-auto space-y-4">
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">អត្តលេខសិស្ស (ID)</label>
+                <input type="text" id="student-id" placeholder="ឧទាហរណ៍: 1" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
+                    onkeydown="if(event.key === 'Enter') document.getElementById('birth-year').focus()">
+            </div>
+            <div>
+                <label class="block text-gray-700 text-sm font-bold mb-2">ឆ្នាំកំណើត (YYYY)</label>
+                <input type="number" id="birth-year" placeholder="ឧទាហរណ៍: 2005" 
+                    class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition shadow-sm"
+                    onkeydown="if(event.key === 'Enter') searchStudent()">
+            </div>
+            <button onclick="searchStudent()" id="search-btn"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition transform hover:scale-105 active:scale-95 flex justify-center items-center shadow-md">
+                <span>ស្វែងរក</span>
+            </button>
+            <a href="student.html" class="flex items-center gap-0 text-blue-600 hover:text-blue-800 font-bold px-4 py-2.5 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors mr-2 border border-blue-200 shadow-sm" title="ត្រឡប់ទៅទំព័រដើម">
+            <i class="fas fa-graduation-cap"></i> <span class="hidden md:block">ទៅកាន់ប្រព័ន្ធប្រឡងអនឡាញ</span>
+            </a>
+        </div>
+
+        <!-- Result Section -->
+        <div id="result-section" class="hidden animate-fade-in">
+            <div class="text-center mb-6 border-b pb-4">
+                <h2 id="student-name" class="text-2xl font-bold text-gray-800"></h2>
+                <div class="flex flex-wrap justify-center gap-2 text-sm mt-3">
+                    <span class="bg-gray-100 text-gray-700 px-3 py-1 rounded-full border">អត្តលេខ: <span id="res-id" class="font-bold"></span></span>
+                    <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full border border-indigo-100">ភេទ: <span id="res-gen" class="font-bold"></span></span>
+                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">ថ្នាក់: <span id="res-class" class="font-bold"></span></span>
+                    <span class="bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100">ឆ្នាំសិក្សា: <span id="res-year" class="font-bold"></span></span>
+                </div>
+            </div>
+
+            <!-- Photo Gallery Grid -->
+            <div id="photo-gallery" class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[500px] overflow-y-auto p-2">
+                <!-- Photos will be injected here -->
+            </div>
+
+            <div class="mt-8 text-center pt-4">
+                <button onclick="resetSearch()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition shadow-sm">
+                    ស្វែងរកម្ដងទៀត
+                </button>
+            </div>
+        </div>
+
+        <!-- Message Box -->
+        <div id="message-box" class="hidden mt-4 p-3 rounded-lg text-center text-sm"></div>
+
+        <!-- Loading Indicator -->
+        <div id="loader" class="hidden mt-4 text-center">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
+            <p class="text-gray-500 text-xs mt-2">កំពុងទាញយកទិន្នន័យ...</p>
+        </div>
+    </div>
+
+    <!-- Flag Counter Section (Only on first page) -->
+    <div id="flag-counter-section" class="mb-6 animate-fade-in flex justify-center">
+        <a href="https://info.flagcounter.com/dXTT">
+            <img src="https://s05.flagcounter.com/count2/dXTT/bg_FFFFFF/txt_000000/border_CCCCCC/columns_2/maxflags_10/viewers_0/labels_1/pageviews_1/flags_0/percent_0/" alt="Flag Counter" border="0">
+        </a>
+    </div>
+
+    <!-- Footer Section -->
+    <div id="page-footer" class="text-center text-white/90 text-sm space-y-1">
+        <p>ជាប្រយោជន៍សម្រាប់សិស្សានុសិស្សប្រើការទៅថ្ងៃខាងមុខ។</p>
+        <p class="font-bold">ផលិតដោយ គ្រូវុទ្ធ</p>
+    </div>
+
+    <script>
+        const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSXTVswNJxJYRN6aSMd5o0cFK2pbF8JWwzPiAht4JLNUs9g6DjbNJdYcIaoOBjkiS0KdeZJMyYzRdAE/pub?output=csv';
+
+        let studentsData = [];
+
+        async function fetchSheetData() {
+            if (window.location.protocol === 'file:') {
+                showMessage("កំហុស៖ អ្នកមិនអាចបើក File នេះផ្ទាល់បានទេ។ សូម Upload ទៅ GitHub Pages ដើម្បីឱ្យវាដំណើរការ។", "error");
+                return;
+            }
+
+            const loader = document.getElementById('loader');
+            loader.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`${SHEET_CSV_URL}&t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const csvText = await response.text();
+                const lines = csvText.split(/\r?\n/);
+                if (lines.length < 2) throw new Error('CSV is empty');
+
+                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                
+                studentsData = lines.slice(1).map(line => {
+                    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+                    const obj = {};
+                    headers.forEach((header, i) => {
+                        if (header) obj[header] = values[i] || "";
+                    });
+                    return obj;
+                }).filter(s => s.ID);
+
+                console.log("ទិន្នន័យសិស្សទាញបានជោគជ័យ។");
+                document.getElementById('message-box').classList.add('hidden');
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                showMessage("មិនអាចទាញទិន្នន័យបានទេ។ សូមពិនិត្យការតភ្ជាប់អ៊ីនធឺណិត។", "error");
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function showMessage(text, type) {
+            const box = document.getElementById('message-box');
+            box.innerText = text;
+            box.className = `mt-4 p-3 rounded-lg text-center text-sm ${type === 'error' ? 'bg-red-100 text-red-600 font-bold border border-red-200' : 'bg-green-100 text-green-600 border border-green-200'}`;
+            box.classList.remove('hidden');
+        }
+
+        function formatDropboxUrl(url) {
+            if (!url || typeof url !== 'string') return '';
+            let formatted = url.trim().replace('www.dropbox.com', 'dl.dropboxusercontent.com');
+            formatted = formatted.replace('?dl=0', '?raw=1');
+            if (!formatted.includes('raw=1')) {
+                formatted += (formatted.includes('?') ? '&' : '?') + 'raw=1';
+            }
+            return formatted;
+        }
+
+        async function searchStudent() {
+            const inputId = document.getElementById('student-id').value.trim();
+            const inputYear = document.getElementById('birth-year').value.trim();
+
+            if (!inputId || !inputYear) {
+                showMessage("សូមបំពេញអត្តលេខ និងឆ្នាំកំណើត", "error");
+                return;
+            }
+
+            document.getElementById('student-id').blur();
+            document.getElementById('birth-year').blur();
+
+            if (studentsData.length === 0) {
+                await fetchSheetData();
+                if (studentsData.length === 0) return;
+            }
+
+            const student = studentsData.find(s => 
+                String(s.ID).trim() === inputId && String(s.YYYY).trim() === inputYear
+            );
+
+            if (student) {
+                displayResult(student);
+            } else {
+                showMessage("រកមិនឃើញទិន្នន័យសិស្សឡើយ។ សូមពិនិត្យលេខសម្គាល់ " + inputId + " និងឆ្នាំ " + inputYear, "error");
+            }
+        }
+
+        function displayResult(student) {
+            // លាក់ Logo, Footer, ចំណងជើង និង Flag Counter
+            document.getElementById('header-logo').classList.add('hidden');
+            document.getElementById('page-footer').classList.add('hidden');
+            document.getElementById('form-header').classList.add('hidden');
+            document.getElementById('flag-counter-section').classList.add('hidden');
+            
+            document.getElementById('search-section').classList.add('hidden');
+            document.getElementById('result-section').classList.remove('hidden');
+
+            // បង្ហាញព័ត៌មានលម្អិត
+            document.getElementById('student-name').innerText = `${student.FNAME || ''} ${student.LNAME || ''}`;
+            document.getElementById('res-id').innerText = student.ID;
+            document.getElementById('res-gen').innerText = student.GEN || '-';
+            document.getElementById('res-class').innerText = student.CLASS || '-';
+            document.getElementById('res-year').innerText = student.YEAR || 'មិនមានទិន្នន័យ';
+
+            const gallery = document.getElementById('photo-gallery');
+            gallery.innerHTML = ''; 
+
+            const photoUrls = student.PhotoURL ? student.PhotoURL.split(',').map(url => url.trim()).filter(url => url !== "") : [];
+
+            if (photoUrls.length === 0) {
+                gallery.innerHTML = '<p class="col-span-full text-gray-400 py-10 text-center">មិនមានរូបថតក្នុងទិន្នន័យ</p>';
+                return;
+            }
+
+            photoUrls.forEach((url, index) => {
+                const formattedUrl = formatDropboxUrl(url);
+                const downloadUrl = formattedUrl.replace('raw=1', 'dl=1');
+                
+                const photoCard = document.createElement('div');
+                photoCard.className = "bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3 animate-fade-in";
+                photoCard.style.animationDelay = `${index * 0.1}s`;
+
+                photoCard.innerHTML = `
+                    <div class="aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
+                        <img src="${formattedUrl}" alt="រូបថតទី ${index + 1}" 
+                             class="w-full h-full object-cover hover:scale-105 transition duration-300"
+                             onerror="this.src='https://via.placeholder.com/300?text=Error+Loading'">
+                    </div>
+                    <a href="${downloadUrl}" target="_blank" 
+                       class="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 rounded-lg transition text-center shadow-sm">
+                       ទាញយករូបថតទី ${index + 1}
+                    </a>
+                `;
+                gallery.appendChild(photoCard);
+            });
+        }
+
+        function resetSearch() {
+            // បង្ហាញ Logo, Footer, ចំណងជើង និង Flag Counter ឡើងវិញ
+            document.getElementById('header-logo').classList.remove('hidden');
+            document.getElementById('page-footer').classList.remove('hidden');
+            document.getElementById('form-header').classList.remove('hidden');
+            document.getElementById('flag-counter-section').classList.remove('hidden');
+
+            document.getElementById('search-section').classList.remove('hidden');
+            document.getElementById('result-section').classList.add('hidden');
+            document.getElementById('student-id').value = '';
+            document.getElementById('birth-year').value = '';
+            document.getElementById('message-box').classList.add('hidden');
+            document.getElementById('student-id').focus();
+        }
+
+        window.onload = fetchSheetData;
+    </script>
+</body>
+</html>
