@@ -589,10 +589,12 @@
           <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
             <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
               <h3 class="text-xl font-moul text-blue-800"><i class="fas fa-key text-blue-600 mr-2"></i> ប្តូរពាក្យសម្ងាត់</h3>
+              
               <button onclick="window.closeChangePassModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6">
               <form onsubmit="window.saveNewPassword(event)" class="space-y-4">
+                <label class="block text-gray-700 text-sm font-bold mb-1">ការផ្លាស់ប្តូរពាក្យសម្ងាត់នេះគឺសម្រាប់តែកម្មវិធីប្រឡងអនឡាញនេះតែប៉ុណ្ណោះ មិនមែនសម្រាប់កម្មវិធីទាញយករូបថតទេ! </label>
                 <div><label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់បច្ចុប្បន្ន <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="oldPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-50" placeholder="វាយពាក្យសម្ងាត់ចាស់របស់អ្នក"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('oldPass', this)"></i></div></div>
                 <div><label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="newPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មី (យ៉ាងហោច ៤ ខ្ទង់)"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('newPass', this)"></i></div></div>
                 <div><label class="block text-gray-700 text-sm font-bold mb-1">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="confirmPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីម្តងទៀត"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('confirmPass', this)"></i></div></div>
