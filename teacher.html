@@ -788,7 +788,7 @@
           <form id="frmAddQuestion" onsubmit="window.handleSaveQuestion(event)" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div class="col-span-1 md:col-span-2">
-                <label class="block text-gray-700 text-sm font-bold mb-2">សម្រាប់ថ្នាក់ទី (រើសច្រើន)</label>
+                <label class="block text-gray-700 text-sm font-bold mb-2">សម្រាប់ថ្នាក់ទី (អាចជ្រើសរើសបានច្រើនថ្នាក់)</label>
                 <div class="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50 min-h-[48px] items-center">
                   ${classes.map(c => `
                     <label class="flex items-center gap-1.5 cursor-pointer bg-white px-2 py-1 rounded border shadow-sm hover:bg-blue-50">
@@ -799,7 +799,7 @@
                 </div>
               </div>
               <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">ប្រចាំខែ / ឆមាស</label>
+                <label class="block text-gray-700 text-sm font-bold mb-2">សម្រាប់ការប្រឡង</label>
                 <select id="qMonth" class="w-full p-3 border rounded-lg bg-gray-50">
                   ${months.map(m => `<option value="${m}">${m}</option>`).join('')}
                 </select>
@@ -808,7 +808,7 @@
                 <label class="block text-gray-700 text-sm font-bold mb-2">របៀបបង្ហាញដល់សិស្ស</label>
                 <select id="qDisplayMode" class="w-full p-3 border rounded-lg bg-green-50 text-green-800 font-bold border-green-200">
                   <option value="fixed">បង្ហាញជានិច្ច (Fixed)</option>
-                  <option value="random">ទាញចៃដន្យ (Random)</option>
+                  <option value="random">បង្ហាញចៃដន្យ (Random)</option>
                 </select>
               </div>
             </div>
@@ -817,9 +817,9 @@
               <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2">ប្រភេទសំណួរ</label>
                 <select id="qType" onchange="window.toggleQType(this.value)" class="w-full p-3 border rounded-lg bg-blue-50 text-blue-800 font-bold border-blue-200">
-                  <option value="multiple_choice_single">ជ្រើសរើសចម្លើយ (ត្រូវតែ ១)</option>
-                  <option value="multiple_choice_multi">ជ្រើសរើសចម្លើយ (ត្រូវលើសពី ១)</option>
-                  <option value="essay">សរសេរឆ្លើយ (Essay)</option>
+                  <option value="multiple_choice_single">ជ្រើសរើស (ត្រូវតែ ១)</option>
+                  <option value="multiple_choice_multi">ពហុជ្រើសរើស (ត្រូវលើសពី១</option>
+                  <option value="essay">សរសេរចម្លើយ (Essay)</option>
                   <option value="lesson">មេរៀន / អំណាន (មិនមានពិន្ទុ)</option>
                 </select>
               </div>
@@ -831,7 +831,7 @@
 
             <div>
               <div class="flex justify-between items-end mb-2">
-                <label class="block text-gray-700 text-sm font-bold">ខ្លឹមសារសំណួរ / មេរៀន</label>
+                <label class="block text-gray-700 text-sm font-bold">ខ្លឹមសារសំណួរ ឬ មេរៀន</label>
                 <button type="button" onclick="window.openFormulaGuide()" class="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-100 transition shadow-sm border border-blue-100"><i class="fas fa-calculator mr-1"></i> របៀបបញ្ចូលរូបមន្ត (fx)</button>
               </div>
               <div class="border rounded-lg overflow-hidden shadow-sm">
@@ -861,7 +861,7 @@
             </div>
 
             <div id="mcq-options-section" class="bg-gray-50 p-4 rounded-xl border border-gray-200">
-              <label class="block text-gray-700 font-bold mb-3"><i class="fas fa-list-ul text-blue-500 mr-2"></i>ជម្រើសចម្លើយ (ធីកលើចម្លើយដែលត្រូវ)</label>
+              <label class="block text-gray-700 font-bold mb-3"><i class="fas fa-list-ul text-blue-500 mr-2"></i>បញ្ចូលចម្លើយ (ធីកលើចម្លើយដែលត្រឹមត្រូវ)</label>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 ${[0, 1, 2, 3].map(idx => `
                   <div class="flex items-center gap-3 bg-white p-2 rounded-lg border shadow-sm">
@@ -874,7 +874,7 @@
               </div>
             </div>
             <button type="submit" id="btnSaveQuestion" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition shadow-md flex justify-center items-center gap-2 text-lg">
-              <i class="fas fa-save"></i> ${editingQuestionId ? 'ធ្វើបច្ចុប្បន្នភាពសំណួរ' : 'រក្សាទុកបញ្ជូលក្នុងប្រព័ន្ធ'}
+              <i class="fas fa-save"></i> ${editingQuestionId ? 'ធ្វើបច្ចុប្បន្នភាពសំណួរ' : 'រក្សាទុកសំណួរក្នុងប្រព័ន្ធ'}
             </button>
           </form>
         `;
@@ -1264,10 +1264,10 @@
             <!-- Navigation -->
             <nav class="flex-1 flex flex-wrap justify-center xl:justify-start items-center gap-2">
               <button onclick="window.setTeacherTab('add_questions')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
-                <i class="fas fa-plus-circle"></i> បញ្ចូល១ៗ
+                <i class="fas fa-plus-circle"></i> បញ្ចូលសំណួរម្តង១
               </button>
               <button onclick="window.setTeacherTab('add_questions_table')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'add_questions_table' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
-                <i class="fas fa-table"></i> បញ្ចូលជាតារាង
+                <i class="fas fa-table"></i> បញ្ចូលសំណួរជាតារាង
               </button>
               <button onclick="window.setTeacherTab('manage_q')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'manage_q' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
                 <i class="fas fa-folder"></i> គ្រប់គ្រងសំណួរ
@@ -1275,19 +1275,13 @@
               <button onclick="window.setTeacherTab('reports')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'reports' || activeTab === 'grading_view' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
                 <i class="fas fa-clipboard-list"></i> របាយការណ៍/កែពិន្ទុ
               </button>
-              <a href="stcard.html" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
-                <i class="fas fa-id-card"></i> កាតសិស្ស
-              </a>
-              <a href="Structure.html" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200">
-                <i class="fas fa-sitemap"></i> រចនាសម្ព័ន្ធថ្នាក់
-              </a>
               <button onclick="window.setTeacherTab('settings')" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === 'settings' || activeTab === 'manage_students' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-600 bg-gray-50 hover:bg-blue-50 hover:text-blue-600 border border-gray-200'}">
                 <i class="fas fa-users-cog"></i> កំណត់គណនី & សិស្ស
-              </button>              
-               <!-- Back Button -->
-              <a href="cvms.html" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold px-4 py-2.5 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors mr-2 border border-blue-200 shadow-sm" title="ចូលទៅកាន់ទំព័រគ្រប់គ្រងបន្ទុកថ្នាក់">
-              <i class="fas fa-chalkboard-teacher"></i> <span class="hidden md:block">បន្ទុកថ្នាក់</span>
-        </a>
+              </button>                           
+              
+              <a href="vcms.html" class="flex items-center gap-2 px-3 py-2 rounded-xl font-bold transition text-sm ${activeTab === '' ? 'bg-blue-600 text-white shadow-md' : 'text-white shadow -md bg-green-500 hover:bg-blue-600 hover:text-white shadow-md border border-gray-200'}">
+                <i class="fas fa-chalkboard-teacher"></i> បន្ទុកថ្នាក់ខ្ញុំ - VCMS
+              </a>              
             </nav>
           </div>
           
