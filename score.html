@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="km">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>បញ្ចូលពិន្ទុ - VCMS</title>
+    <link rel="icon" href="https://www.dropbox.com/scl/fi/2tds3u7hcslgrtcnfimdg/nv.ico?rlkey=t4swsdf8hv7iwbg23pjknp0wn&st=84qf47bv&dl=1">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;600;700&family=Moul&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+      body { font-family: 'Noto Sans Khmer', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+      .kh-heading { font-family: 'Moul', cursive; font-weight: normal; line-height: 1.8; }
+      
+      .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.875rem; border: 1px solid #d1d5db; background: #ffffff; color: #374151; font-weight: 600; border-radius: 0.5rem; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all .15s ease; }
+      .btn:hover { background: #f9fafb; border-color: #9ca3af; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .btn-primary { background: #2563eb; color: #ffffff; border-color: #2563eb; }
+      .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #ffffff; }
+      .btn-danger { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+      .btn-danger:hover { background: #fee2e2; border-color: #fca5a5; }
+      
+      #toast { position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 12px 20px; border-radius: 8px; color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+      
+      /* លុបព្រួញឡើងចុះក្នុងប្រអប់លេខ */
+      input[type="number"]::-webkit-outer-spin-button,
+      input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <div id="toast"></div>
+
+    <!-- Login Screen -->
+    <section id="auth-shell" class="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-white">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"><i class="fas fa-marker"></i></div>
+          <h1 class="text-2xl font-bold text-gray-800 font-moul mb-2">បញ្ចូលពិន្ទុ - VCMS</h1>
+          <p class="text-gray-500 text-sm font-semibold">ប្រព័ន្ធគ្រប់គ្រងពិន្ទុ និងទិន្នន័យសិស្ស</p>
+        </div>
+        <form id="form-auth" class="space-y-4">
+          <div><label class="block text-sm font-bold text-gray-700 mb-1">អ៊ីមែល (Email)</label><div class="relative"><i class="fas fa-envelope absolute left-3 top-3.5 text-gray-400"></i><input id="auth-email" type="email" class="w-full border border-gray-300 rounded-xl px-3 py-3 pl-10 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="teacher@school.com" required /></div></div>
+          <div><label class="block text-sm font-bold text-gray-700 mb-1">ពាក្យសម្ងាត់ (Password)</label><div class="relative"><i class="fas fa-lock absolute left-3 top-3.5 text-gray-400"></i><input id="auth-password" type="password" class="w-full border border-gray-300 rounded-xl px-3 py-3 pl-10 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" placeholder="••••••••" required /></div></div>
+          <button id="btn-sign-in" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition mt-2 flex items-center justify-center gap-2" type="submit">ចូលប្រព័ន្ធ <i class="fas fa-arrow-right"></i></button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main App -->
+    <div id="app-shell" class="w-full min-h-screen hidden flex flex-col">
+      
+      <!-- Top Navbar (Replaced Sidebar for more horizontal space) -->
+      <nav class="bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex justify-between items-center sticky top-0 z-50">
+          <div class="flex items-center gap-4">
+              <a href="vcms.html" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-sm" title="ត្រឡប់ទៅទំព័រគ្រប់គ្រង">
+                  <i class="fas fa-arrow-left"></i> <span class="hidden md:block">ត្រឡប់ក្រោយ</span>
+              </a>
+              <div class="h-8 w-px bg-gray-300 hidden md:block"></div>
+              <h1 class="text-xl font-bold text-blue-800 kh-heading flex items-center gap-2 hidden sm:flex">
+                  <i class="fas fa-marker text-blue-600"></i> បញ្ចូលពិន្ទុ
+              </h1>
+          </div>
+          <div class="flex items-center gap-3">
+              <div class="hidden md:block text-right">
+                  <div class="text-xs text-gray-500 font-semibold">គណនេយ្យ៖</div>
+                  <div id="user-email" class="text-sm font-bold text-blue-700 truncate max-w-[150px]">-</div>
+              </div>
+              <button id="btn-sign-out" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg font-bold transition flex items-center gap-2">
+                  <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">ចាកចេញ</span>
+              </button>
+          </div>
+      </nav>
+
+      <!-- Main Content -->
+      <div class="flex-1 bg-gray-50 p-4 sm:p-6">
+        <div class="max-w-[1400px] mx-auto">
+            
+            <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-200">
+              <!-- Controls -->
+              <div class="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-200 mb-4 flex flex-col lg:flex-row gap-4 items-end">
+                <div class="flex-1 w-full lg:max-w-xs">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសថ្នាក់</label>
+                    <select id="score-class" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 bg-white"></select>
+                </div>
+                <div class="flex-1 w-full lg:max-w-xs">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសការប្រឡង (ខែ)</label>
+                    <select id="score-exam" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white"></select>
+                </div>
+                
+                <div class="flex gap-2 w-full lg:w-auto flex-wrap ml-auto">
+                    <button id="btn-export-excel" class="btn bg-green-50 text-green-700 border-green-200 hover:bg-green-100 py-2 px-4 text-sm flex-1 md:flex-none" title="នាំចេញពិន្ទុខែនេះជា Excel">
+                        <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">នាំចេញ Excel</span>
+                    </button>
+                    <button id="btn-copy-scores-modal" class="btn bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 py-2 px-4 text-sm flex-1 md:flex-none" title="ចម្លងពិន្ទុពីខែចាស់">
+                        <i class="fas fa-copy"></i> <span class="hidden sm:inline">ចម្លងពិន្ទុ</span>
+                    </button>
+                    <button id="btn-save-all-scores" class="btn btn-primary py-2 px-6 text-sm flex-1 md:flex-none shadow-md" disabled>
+                        <i class="fas fa-save"></i> រក្សាទុក
+                    </button>
+                    <button id="btn-delete-all-scores" class="btn btn-danger py-2 px-4 text-sm flex-1 md:flex-none" title="លុបពិន្ទុការប្រឡងនេះទាំងអស់">
+                        <i class="fas fa-eraser"></i> <span class="hidden sm:inline">លុបទាំងអស់</span>
+                    </button>
+                </div>
+              </div>
+
+              <!-- Information Alert -->
+              <div class="mb-4 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-2 hidden" id="grid-info">
+                  <i class="fas fa-info-circle text-blue-500 mt-0.5"></i> 
+                  <div>អ្នកអាចវាយបញ្ចូលពិន្ទុដោយប្រើ Keyboard (ព្រួញឡើងចុះ ឆ្វេងស្តាំ ឬ Enter) និងអាច Copy ពិន្ទុពី Excel មក Paste បញ្ចូលក្នុងតារាងនេះបានដោយផ្ទាល់។ ក្រឡាពណ៌បៃតងបញ្ជាក់ថាពិន្ទុពេញ។</div>
+              </div>
+
+              <!-- Grid -->
+              <div class="overflow-auto rounded-lg border border-gray-300 max-h-[75vh] relative bg-gray-50 shadow-inner">
+                  <table class="w-full text-sm text-left border-collapse" id="table-scores">
+                      <thead class="bg-gray-200 sticky top-0 z-30 shadow-sm"><tr id="scores-header-row"></tr></thead>
+                      <tbody>
+                          <tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>
+                      </tbody>
+                  </table>
+              </div>
+            </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Copy Scores Modal -->
+    <div id="copy-scores-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div class="p-5 border-b bg-purple-50 text-purple-800 font-moul font-bold flex justify-between items-center">
+                <span class="flex items-center gap-2"><i class="fas fa-copy"></i> ចម្លងពិន្ទុ និងអវត្តមាន</span>
+                <button onclick="document.getElementById('copy-scores-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white text-gray-500 hover:text-red-500 shadow-sm border"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-sm text-gray-600">សូមជ្រើសរើសការប្រឡង (ខែ) ដែលអ្នកចង់ចម្លងយកពិន្ទុ និងអវត្តមានមកដាក់បញ្ចូលក្នុងខែ <strong id="copy-target-name" class="text-blue-600"></strong> នេះ៖</p>
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">ចម្លងពី៖</label>
+                    <select id="copy-source-exam" class="w-full border border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-purple-500 outline-none font-bold text-gray-700"></select>
+                </div>
+                <div class="pt-4 flex justify-end gap-3 border-t mt-2">
+                    <button onclick="document.getElementById('copy-scores-modal').classList.add('hidden')" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button>
+                    <button id="btn-execute-copy" class="px-6 py-2.5 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition shadow-md flex items-center gap-2"><i class="fas fa-check"></i> យល់ព្រមចម្លង</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+      import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+      const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyD1l6lkUCMkOPPE-gR3a8XardlGUUfR3pg", authDomain: "ictexam-1ebeb.firebaseapp.com", projectId: "ictexam-1ebeb", storageBucket: "ictexam-1ebeb.firebasestorage.app", messagingSenderId: "18694490334", appId: "1:18694490334:web:c5071b02bf72100a78da4f" };
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'ictexam-app';
+
+      const getCol = (name) => collection(db, 'artifacts', appId, 'users', auth.currentUser.uid, name);
+      const getDocR = (name, id) => doc(db, 'artifacts', appId, 'users', auth.currentUser.uid, name, id);
+      const $ = (q) => document.querySelector(q);
+      const pad2 = (n) => (n != null ? String(n).padStart(2,'0') : '');
+      const opt = (val, text) => `<option value="${val}">${text}</option>`;
+
+      window.notify = (msg, ok=true) => {
+        const el = $('#toast'); el.textContent = msg; el.style.backgroundColor = ok ? '#10b981' : '#ef4444'; el.style.opacity = '1';
+        setTimeout(() => { el.style.opacity = '0'; }, 3000);
+      };
+
+      // Custom Confirm Dialog function
+      window.customConfirm = (message, onYes, onNo) => {
+          const modalHtml = `
+          <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+              <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
+                  <div class="p-5 border-b bg-red-50 text-red-800 font-moul font-bold flex items-center gap-2">
+                      <i class="fas fa-exclamation-triangle"></i> ការព្រមាន
+                  </div>
+                  <div class="p-6 text-gray-700 text-center whitespace-pre-wrap leading-relaxed">${message}</div>
+                  <div class="p-4 border-t flex justify-end gap-3 bg-gray-50">
+                      <button id="custom-confirm-no" class="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-xl font-bold hover:bg-gray-300 transition">បោះបង់</button>
+                      <button id="custom-confirm-yes" class="bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-red-700 transition shadow-md">យល់ព្រមលុប</button>
+                  </div>
+              </div>
+          </div>`;
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+          document.getElementById('custom-confirm-no').onclick = () => {
+              document.getElementById('custom-confirm-modal').remove();
+              if (onNo) onNo();
+          };
+          document.getElementById('custom-confirm-yes').onclick = () => {
+              document.getElementById('custom-confirm-modal').remove();
+              if (onYes) onYes();
+          };
+      };
+      
+      window.customAlert = (message) => { alert(message); };
+
+      let publicStudentsRaw = [];
+      let classesData = [], studentsData = [], subjectsData = [], examsData = [], scoresData = [], attendancesData = [];
+      let unsubscribes = [];
+
+      function clearData() { 
+          publicStudentsRaw=[]; classesData=[]; studentsData=[]; subjectsData=[]; examsData=[]; scoresData=[]; attendancesData=[]; 
+          unsubscribes.forEach(u=>u()); unsubscribes=[]; 
+      }
+
+      function mapStudents() {
+          studentsData = [];
+          publicStudentsRaw.forEach(ps => {
+              const psClass = String(ps.CLASS || '').trim().toLowerCase();
+              const matchedClass = classesData.find(c => String(c.name || '').trim().toLowerCase() === psClass);
+              
+              if (matchedClass) {
+                  studentsData.push({
+                      id: ps.ID,
+                      class_id: matchedClass.id,
+                      first_name: ps.FNAME || '',  
+                      last_name: ps.LNAME || '',   
+                      gender: ps.GEN || '',
+                      code: ps.ID,
+                  });
+              }
+          });
+          studentsData.sort((a, b) => a.first_name.localeCompare(b.first_name, 'km'));
+      }
+
+      function loadData() {
+        clearData();
+        
+        unsubscribes.push(onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'teachers', auth.currentUser.uid), s => { 
+            if(s.exists()) {
+                $('#user-email').textContent = s.data().name || auth.currentUser.email;
+            } else {
+                $('#user-email').textContent = auth.currentUser.email;
+            }
+        }));
+
+        unsubscribes.push(onSnapshot(getCol('classes'), s => { 
+            classesData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            mapStudents(); 
+            updateSelects(); 
+            renderScoresGrid();
+        }));
+
+        unsubscribes.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), s => { 
+            publicStudentsRaw = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            mapStudents(); 
+            renderScoresGrid();
+        }));
+
+        unsubscribes.push(onSnapshot(getCol('subjects'), s => { subjectsData = s.docs.map(d=>({id: d.id, ...d.data()})); renderScoresGrid(); }));
+        unsubscribes.push(onSnapshot(getCol('exams'), s => { examsData = s.docs.map(d=>({id: d.id, ...d.data()})); updateSelects(); renderScoresGrid(); }));
+        unsubscribes.push(onSnapshot(getCol('scores'), s => { scoresData = s.docs.map(d=>({id: d.id, ...d.data()})); renderScoresGrid(); }));
+        unsubscribes.push(onSnapshot(getCol('attendances'), s => { attendancesData = s.docs.map(d=>({id: d.id, ...d.data()})); renderScoresGrid(); }));
+      }
+
+      $('#form-auth').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = $('#btn-sign-in'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> កំពុងផ្ទៀងផ្ទាត់...'; btn.disabled = true;
+          try { await signInWithEmailAndPassword(auth, $('#auth-email').value.trim(), $('#auth-password').value.trim()); } 
+          catch(err) { alert('អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវ'); btn.innerHTML = 'ចូលប្រព័ន្ធ <i class="fas fa-arrow-right"></i>'; btn.disabled = false; }
+      });
+      
+      $('#btn-sign-out').addEventListener('click', () => signOut(auth));
+
+      onAuthStateChanged(auth, user => {
+          if(user) { 
+              $('#auth-shell').classList.add('hidden'); 
+              $('#app-shell').classList.remove('hidden'); 
+              loadData(); 
+          } else { 
+              $('#auth-shell').classList.remove('hidden'); 
+              $('#app-shell').classList.add('hidden'); 
+              clearData(); 
+          }
+      });
+
+      function updateSelects() {
+        const sortedClasses = [...classesData].sort((a,b) => (a.display_no||99) - (b.display_no||99));
+        const cs = $('#score-class');
+        const es = $('#score-exam');
+        
+        const currentClassVal = cs.value; 
+        const isClassInit = cs.dataset.initialized === 'true';
+        
+        cs.innerHTML = '<option value="">-- ជ្រើសរើសថ្នាក់ --</option>';
+        sortedClasses.forEach(c => cs.innerHTML += opt(c.id, `${c.name} (${c.year})`));
+        
+        if (!isClassInit && sortedClasses.length > 0) {
+            cs.value = sortedClasses[sortedClasses.length - 1].id;
+            cs.dataset.initialized = 'true';
+        } else if(currentClassVal && Array.from(cs.options).some(o => o.value === currentClassVal)) {
+            cs.value = currentClassVal;
+        }
+
+        const currentExamVal = es.value; 
+        const lastClassId = es.dataset.lastClassId;
+        
+        es.innerHTML = '<option value="">-- ជ្រើសរើសការប្រឡង --</option>';
+        
+        let filteredExams = [];
+        if(cs.value) {
+            filteredExams = examsData.filter(e => String(e.class_id) === String(cs.value)).sort((a,b)=>(a.display_no||99)-(b.display_no||99));
+            filteredExams.forEach(e => es.innerHTML += opt(e.id, `${e.name} (${new Date(e.month).toLocaleDateString('km-KH',{year:'numeric',month:'short'})})`));
+        }
+        
+        if (cs.value && cs.value !== lastClassId && filteredExams.length > 0) {
+            es.value = filteredExams[0].id;
+            es.dataset.lastClassId = cs.value;
+        } else if(currentExamVal && Array.from(es.options).some(o => o.value === currentExamVal)) {
+            es.value = currentExamVal;
+            es.dataset.lastClassId = cs.value;
+        } else if (filteredExams.length > 0 && !es.dataset.initializedExam) {
+            es.value = filteredExams[0].id;
+            es.dataset.initializedExam = 'true';
+            es.dataset.lastClassId = cs.value;
+        }
+      }
+
+      $('#score-class').addEventListener('change', () => { updateSelects(); renderScoresGrid(); });
+      $('#score-exam').addEventListener('change', renderScoresGrid);
+
+      function getStus(cId) { return studentsData.filter(s=>s.class_id===cId); }
+      function getSubs(cId) { return [...subjectsData].filter(s=>s.class_id===cId).sort((a,b)=>(a.display_no||99)-(b.display_no||99)); }
+
+      function renderScoresGrid() {
+        const cId = $('#score-class').value, eId = $('#score-exam').value;
+        const thead = $('#scores-header-row'), tbody = $('#table-scores tbody'), btnSave = $('#btn-save-all-scores');
+        
+        if(!cId || !eId) { 
+            thead.innerHTML = ''; 
+            tbody.innerHTML = '<tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>';
+            btnSave.disabled = true; 
+            $('#grid-info').classList.add('hidden');
+            return; 
+        } 
+        
+        btnSave.disabled = false;
+        $('#grid-info').classList.remove('hidden');
+        
+        const subs = getSubs(cId);
+        const stus = getStus(cId);
+        
+        thead.innerHTML = ''; tbody.innerHTML = '';
+
+        thead.innerHTML = '<th class="p-2 border border-gray-300 bg-gray-200 text-center font-bold sticky top-0 z-30 w-10 text-xs">ល.រ</th><th class="p-2 border border-gray-300 bg-gray-200 sticky left-0 top-0 z-40 text-left font-bold shadow-[1px_1px_0_#d1d5db]">សិស្ស</th>';
+        subs.forEach(su => {
+            const coef = su.max_score ? (Number(su.max_score)/50).toFixed(2) : 0;
+            thead.innerHTML += `<th class="p-1 border border-gray-300 bg-gray-200 text-center sticky top-0 z-30 min-w-[60px]"><div class="font-bold text-gray-800 leading-tight text-[13px]">${su.name}</div><div class="text-[9px] text-gray-500 font-normal">M:${su.max_score||100}|C:${coef}</div></th>`
+        });
+
+        // បន្ថែមប្រឡោះសម្រាប់ អវត្តមាន ច និង អ នៅខាងចុង
+        thead.innerHTML += `<th class="p-1 border border-gray-300 bg-orange-100 text-center sticky top-0 z-30 w-12"><div class="font-bold text-orange-800 text-[13px]">ច</div></th>`;
+        thead.innerHTML += `<th class="p-1 border border-gray-300 bg-red-100 text-center sticky top-0 z-30 w-12"><div class="font-bold text-red-800 text-[13px]">អ</div></th>`;
+        
+        if(stus.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${subs.length + 4}" class="p-8 text-center text-gray-500">មិនមានសិស្សនៅក្នុងថ្នាក់នេះទេ</td></tr>`;
+            return;
+        }
+
+        stus.forEach((stu, rowIndex) => {
+            let tr = `<tr class="hover:bg-blue-50 transition-none">`;
+            tr += `<td class="p-1 border border-gray-300 text-center text-gray-500 bg-gray-50 text-xs">${rowIndex + 1}</td>`;
+            tr += `<td class="p-2 border border-gray-300 font-bold text-gray-800 sticky left-0 bg-white z-10 shadow-[1px_0_0_#d1d5db] truncate max-w-[140px] text-[13px]">${stu.first_name} ${stu.last_name}</td>`;
+            
+            // Loop មុខវិជ្ជា (Scores)
+            subs.forEach((su, colIndex) => {
+                const exist = scoresData.find(sc => String(sc.student_id) === String(stu.id) && String(sc.subject_id) === String(su.id) && String(sc.exam_id) === String(eId));
+                const val = exist ? exist.score : '';
+                const max = su.max_score||100;
+                let bgStyle = '';
+                if (val === '') bgStyle = 'background-color: #fff1f2;'; 
+                else if (Number(val) === Number(max)) bgStyle = 'background-color: #dcfce3;';
+                else bgStyle = 'background-color: #ffffff;';
+                
+                tr += `<td class="p-0 border border-gray-300 relative">
+                           <input type="number" step="0.01" max="${max}" 
+                                  data-student="${stu.id}" data-subject="${su.id}" 
+                                  data-row="${rowIndex}" data-col="${colIndex}" 
+                                  class="grid-input score-input w-full h-full min-w-[60px] min-h-[38px] text-center font-bold text-blue-700 outline-none border-none focus:ring-2 focus:ring-blue-600 focus:z-20 rounded-none m-0 transition-colors" 
+                                  style="${bgStyle}" value="${val}">
+                       </td>`;
+            });
+
+            // Loop អវត្តមាន (Attendances)
+            const att = attendancesData.find(a => String(a.student_id) === String(stu.id) && String(a.exam_id) === String(eId));
+            const excVal = att && att.excused !== undefined && att.excused !== null ? att.excused : '';
+            const unexcVal = att && att.unexcused !== undefined && att.unexcused !== null ? att.unexcused : '';
+            
+            let excBg = excVal === '' ? 'background-color: #ffffff;' : 'background-color: #ffedd5;';
+            let unexcBg = unexcVal === '' ? 'background-color: #ffffff;' : 'background-color: #fee2e2;';
+
+            tr += `<td class="p-0 border border-gray-300 relative">
+                       <input type="number" data-student="${stu.id}" data-row="${rowIndex}" data-col="${subs.length}" class="grid-input abs-exc w-full h-full min-w-[48px] min-h-[38px] text-center font-bold text-orange-600 outline-none border-none focus:ring-2 focus:ring-orange-500 rounded-none m-0" style="${excBg}" value="${excVal}">
+                   </td>`;
+            tr += `<td class="p-0 border border-gray-300 relative">
+                       <input type="number" data-student="${stu.id}" data-row="${rowIndex}" data-col="${subs.length + 1}" class="grid-input abs-unexc w-full h-full min-w-[48px] min-h-[38px] text-center font-bold text-red-600 outline-none border-none focus:ring-2 focus:ring-red-500 rounded-none m-0" style="${unexcBg}" value="${unexcVal}">
+                   </td>`;
+
+            tbody.innerHTML += tr + '</tr>';
+        });
+      }
+
+      // មុខងារត្រួតពិនិត្យ (Validate) ពិន្ទុ និងពណ៌
+      document.body.addEventListener('input', (e) => {
+          if (e.target.classList.contains('grid-input')) {
+              let currentVal = parseFloat(e.target.value);
+              
+              if (e.target.classList.contains('score-input')) {
+                  let maxVal = parseFloat(e.target.getAttribute('max'));
+                  if (!isNaN(currentVal) && !isNaN(maxVal) && currentVal > maxVal) {
+                      e.target.value = maxVal; 
+                      notify(`ពិន្ទុមិនអាចលើសពី ${maxVal} បានទេ!`, false);
+                      currentVal = maxVal;
+                  }
+                  if (currentVal === maxVal) e.target.style.backgroundColor = '#dcfce3'; 
+                  else if (e.target.value === '') e.target.style.backgroundColor = '#fff1f2'; 
+                  else e.target.style.backgroundColor = '#ffffff'; 
+              } 
+              else if (e.target.classList.contains('abs-exc')) {
+                  if (e.target.value === '') e.target.style.backgroundColor = '#ffffff';
+                  else e.target.style.backgroundColor = '#ffedd5';
+              } 
+              else if (e.target.classList.contains('abs-unexc')) {
+                  if (e.target.value === '') e.target.style.backgroundColor = '#ffffff';
+                  else e.target.style.backgroundColor = '#fee2e2';
+              }
+          }
+      });
+
+      // មុខងារបញ្ជាដោយ Keyboard (Enter, ព្រួញ) លើប្រអប់ពិន្ទុ (ដូច Excel)
+      document.body.addEventListener('keydown', (e) => {
+          if (!e.target.classList.contains('grid-input')) return;
+          
+          const currentInput = e.target;
+          const r = parseInt(currentInput.dataset.row);
+          const c = parseInt(currentInput.dataset.col);
+          let nextR = r, nextC = c;
+
+          if (e.key === 'Enter' || e.key === 'ArrowDown') {
+              nextR = r + 1;
+              e.preventDefault();
+          } else if (e.key === 'ArrowUp') {
+              nextR = r - 1;
+              e.preventDefault();
+          } else if (e.key === 'ArrowRight') {
+              nextC = c + 1;
+              e.preventDefault();
+          } else if (e.key === 'ArrowLeft') {
+              nextC = c - 1;
+              e.preventDefault();
+          } else {
+              return;
+          }
+
+          const nextInput = document.querySelector(`.grid-input[data-row="${nextR}"][data-col="${nextC}"]`);
+          if (nextInput) {
+              nextInput.focus();
+              setTimeout(() => nextInput.select(), 10);
+          }
+      });
+
+      // មុខងារ Paste ទិន្នន័យពី Excel (Copy ច្រើនជួរមក Paste ចូលម្តងទាំងអស់)
+      document.body.addEventListener('paste', (e) => {
+          if (!e.target.classList.contains('grid-input')) return;
+          
+          const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+          if (!pasteData) return;
+
+          e.preventDefault(); 
+
+          const rows = pasteData.split(/\r?\n/);
+          const startRow = parseInt(e.target.dataset.row);
+          const startCol = parseInt(e.target.dataset.col);
+
+          let pasteCount = 0;
+
+          rows.forEach((rowStr, rIdx) => {
+              if (rowStr.trim() === '') return;
+              const cols = rowStr.split('\t');
+              cols.forEach((colStr, cIdx) => {
+                  const targetInput = document.querySelector(`.grid-input[data-row="${startRow + rIdx}"][data-col="${startCol + cIdx}"]`);
+                  if (targetInput) {
+                      let valStr = colStr.trim();
+                      if (valStr !== '') {
+                          let val = parseFloat(valStr);
+                          if (!isNaN(val)) {
+                              if (targetInput.classList.contains('score-input')) {
+                                  let maxVal = parseFloat(targetInput.getAttribute('max'));
+                                  if (!isNaN(maxVal) && val > maxVal) val = maxVal; 
+                              }
+                              targetInput.value = val;
+                              targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                              pasteCount++;
+                          }
+                      } else {
+                          targetInput.value = '';
+                          targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+                      }
+                  }
+              });
+          });
+
+          if (pasteCount > 0) notify(`បាន Paste បញ្ចូលទិន្នន័យចំនួន ${pasteCount} ក្រឡា!`, true);
+      });
+
+      // រក្សាទុកពិន្ទុ និងអវត្តមាន
+      $('#btn-save-all-scores').onclick = async() => {
+          const eId = $('#score-exam').value;
+          const cId = $('#score-class').value;
+          const btn = $('#btn-save-all-scores'); 
+          btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> រក្សាទុក...'; 
+          btn.disabled = true;
+
+          try {
+              const promises = [];
+              
+              // 1. Save Scores
+              const scoreInputs = document.querySelectorAll('.score-input');
+              scoreInputs.forEach(inp => {
+                  let val = inp.value !== '' ? Number(inp.value) : null;
+                  let maxVal = parseFloat(inp.getAttribute('max'));
+                  
+                  if (val !== null && !isNaN(maxVal) && val > maxVal) val = maxVal;
+                  
+                  const exist = scoresData.find(sc => String(sc.student_id) === String(inp.dataset.student) && String(sc.subject_id) === String(inp.dataset.subject) && String(sc.exam_id) === String(eId));
+                  if(val !== null) {
+                      if(exist) {
+                          if (exist.score !== val) promises.push(updateDoc(getDocR('scores', exist.id), { score: val }));
+                      } else {
+                          promises.push(addDoc(getCol('scores'), { student_id: String(inp.dataset.student), subject_id: String(inp.dataset.subject), exam_id: String(eId), score: val }));
+                      }
+                  } else if (exist && exist.score !== null && exist.score !== '') {
+                      promises.push(deleteDoc(getDocR('scores', exist.id)));
+                  }
+              });
+
+              // 2. Save Attendances
+              const stus = getStus(cId);
+              stus.forEach(stu => {
+                  const excInp = document.querySelector(`.abs-exc[data-student="${stu.id}"]`);
+                  const unexcInp = document.querySelector(`.abs-unexc[data-student="${stu.id}"]`);
+                  
+                  let excVal = excInp && excInp.value !== '' ? Number(excInp.value) : null;
+                  let unexcVal = unexcInp && unexcInp.value !== '' ? Number(unexcInp.value) : null;
+                  
+                  const existAtt = attendancesData.find(a => String(a.student_id) === String(stu.id) && String(a.exam_id) === String(eId));
+                  
+                  if (excVal !== null || unexcVal !== null) {
+                      const attData = {
+                          student_id: String(stu.id),
+                          exam_id: String(eId),
+                          excused: excVal,
+                          unexcused: unexcVal
+                      };
+                      if (existAtt) {
+                          if (existAtt.excused !== attData.excused || existAtt.unexcused !== attData.unexcused) {
+                              promises.push(updateDoc(getDocR('attendances', existAtt.id), attData));
+                          }
+                      } else {
+                          promises.push(addDoc(getCol('attendances'), attData));
+                      }
+                  } else if (existAtt) {
+                          promises.push(deleteDoc(getDocR('attendances', existAtt.id)));
+                  }
+              });
+
+              if (promises.length > 0) {
+                  await Promise.all(promises); 
+                  notify("ទិន្នន័យត្រូវបានរក្សាទុកជោគជ័យ!");
+              } else {
+                  notify("មិនមានទិន្នន័យថ្មីត្រូវរក្សាទុកទេ!", false);
+              }
+          } catch(err) { window.customAlert('មានបញ្ហា: ' + err.message); } 
+          finally { btn.innerHTML = '<i class="fas fa-save"></i> រក្សាទុក'; btn.disabled = false; }
+      };
+
+      $('#btn-delete-all-scores').onclick = () => {
+          const eId = $('#score-exam').value;
+          const cId = $('#score-class').value;
+          
+          if (!eId || !cId) {
+              window.customAlert('សូមជ្រើសរើសថ្នាក់ និងការប្រឡងជាមុនសិនទើបអាចលុបបាន!');
+              return;
+          }
+
+          const examName = $('#score-exam').options[$('#score-exam').selectedIndex].text;
+
+          window.customConfirm(`តើលោកគ្រូ/អ្នកគ្រូពិតជាចង់លុប "ពិន្ទុ និងអវត្តមានទាំងអស់" សម្រាប់ការប្រឡង ${examName} នេះមែនទេ?\n\n⚠️ ប្រុងប្រយ័ត្ន៖ ទិន្នន័យដែលលុបហើយ មិនអាចទាញយកមកវិញបានឡើយ!`, async () => {
+              const btn = $('#btn-delete-all-scores');
+              const origText = btn.innerHTML;
+              btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+              btn.disabled = true;
+
+              try {
+                  const scoresToDelete = scoresData.filter(sc => String(sc.exam_id) === String(eId));
+                  const attsToDelete = attendancesData.filter(a => String(a.exam_id) === String(eId));
+                  
+                  if (scoresToDelete.length === 0 && attsToDelete.length === 0) {
+                      notify("មិនមានទិន្នន័យត្រូវលុបទេ!", false);
+                      btn.innerHTML = origText;
+                      btn.disabled = false;
+                      return;
+                  }
+
+                  const promises = [];
+                  scoresToDelete.forEach(sc => promises.push(deleteDoc(getDocR('scores', sc.id))));
+                  attsToDelete.forEach(a => promises.push(deleteDoc(getDocR('attendances', a.id))));
+                  
+                  await Promise.all(promises);
+
+                  notify("លុបទិន្នន័យទាំងអស់បានជោគជ័យ!");
+              } catch (err) {
+                  window.customAlert('មានបញ្ហាក្នុងការលុប: ' + err.message);
+              } finally {
+                  btn.innerHTML = origText;
+                  btn.disabled = false;
+              }
+          });
+      };
+
+      // នាំចេញពិន្ទុទៅ Excel
+      $('#btn-export-excel').onclick = () => {
+          const cId = $('#score-class').value;
+          if (!cId) {
+              window.customAlert('សូមជ្រើសរើសថ្នាក់ជាមុនសិន!');
+              return;
+          }
+
+          const classObj = classesData.find(c => String(c.id) === String(cId));
+          const className = classObj ? classObj.name : 'Unknown';
+
+          const stus = getStus(cId);
+          const subs = getSubs(cId);
+          const exms = examsData.filter(e => String(e.class_id) === String(cId)).sort((a,b) => (a.display_no||99)-(b.display_no||99));
+
+          if (stus.length === 0 || subs.length === 0 || exms.length === 0) {
+              window.customAlert('មិនមានទិន្នន័យគ្រប់គ្រាន់សម្រាប់នាំចេញទេ (ត្រូវមានសិស្ស មុខវិជ្ជា និងការប្រឡង)!');
+              return;
+          }
+
+          const wb = XLSX.utils.book_new();
+          const sheetNames = new Set(); 
+
+          exms.forEach(ex => {
+              let sheetName = `${ex.name}`.trim().substring(0, 31); 
+              if(!sheetName) sheetName = "Sheet";
+              
+              let counter = 1;
+              let finalSheetName = sheetName;
+              while(sheetNames.has(finalSheetName)) {
+                  finalSheetName = `${sheetName.substring(0, 27)}_${counter}`;
+                  counter++;
+              }
+              sheetNames.add(finalSheetName);
+
+              const data = [];
+              const header = ['ល.រ', 'អត្តលេខ', 'ឈ្មោះពេញ', 'ភេទ'];
+              subs.forEach(su => header.push(su.name));
+              header.push('សរុប');
+              header.push('មធ្យមភាគ');
+              header.push('ច្បាប់(ច)');
+              header.push('ឥតច្បាប់(អ)');
+              data.push(header);
+
+              const totalCoef = subs.reduce((sum, su) => sum + (su.max_score ? Number(su.max_score)/50 : 0), 0);
+
+              stus.forEach((stu, idx) => {
+                  const row = [
+                      idx + 1,
+                      stu.code || '',
+                      `${stu.first_name} ${stu.last_name}`,
+                      stu.gender || ''
+                  ];
+                  
+                  let tMax = 0;
+                  subs.forEach(su => {
+                      const sc = scoresData.find(s => String(s.student_id) === String(stu.id) && String(s.subject_id) === String(su.id) && String(s.exam_id) === String(ex.id));
+                      const scoreVal = (sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) ? Number(sc.score) : '';
+                      row.push(scoreVal);
+                      if(scoreVal !== '') tMax += scoreVal;
+                  });
+                  
+                  const avg50 = totalCoef > 0 ? (tMax / totalCoef).toFixed(2) : 0;
+                  row.push(tMax);
+                  row.push(Number(avg50));
+
+                  const att = attendancesData.find(a => String(a.student_id) === String(stu.id) && String(a.exam_id) === String(ex.id));
+                  row.push(att && att.excused !== undefined && att.excused !== null ? att.excused : '');
+                  row.push(att && att.unexcused !== undefined && att.unexcused !== null ? att.unexcused : '');
+
+                  data.push(row);
+              });
+
+              const ws = XLSX.utils.aoa_to_sheet(data);
+              
+              const wscols = [ {wch: 5}, {wch: 12}, {wch: 25}, {wch: 8} ];
+              subs.forEach(() => wscols.push({wch: 10}));
+              wscols.push({wch: 10}); wscols.push({wch: 10});
+              wscols.push({wch: 10}); wscols.push({wch: 10}); 
+              ws['!cols'] = wscols;
+
+              XLSX.utils.book_append_sheet(wb, ws, finalSheetName);
+          });
+
+          XLSX.writeFile(wb, `ពិន្ទុថ្នាក់_${className}_${new Date().getFullYear()}.xlsx`);
+          notify('នាំចេញទិន្នន័យទៅជា Excel ជោគជ័យ!', true);
+      };
+
+      // បើកផ្ទាំងបញ្ជាចម្លងពិន្ទុ
+      $('#btn-copy-scores-modal').onclick = () => {
+          const cId = $('#score-class').value;
+          const targetEId = $('#score-exam').value;
+
+          if (!cId || !targetEId) {
+              window.customAlert('សូមជ្រើសរើសថ្នាក់ និងការប្រឡង (គោលដៅ) ជាមុនសិន!');
+              return;
+          }
+
+          const targetExam = examsData.find(e => String(e.id) === String(targetEId));
+          $('#copy-target-name').textContent = targetExam ? targetExam.name : '';
+
+          const sourceSelect = $('#copy-source-exam');
+          sourceSelect.innerHTML = '<option value="">-- ជ្រើសរើសការប្រឡងប្រភព --</option>';
+          const availableExams = examsData.filter(e => String(e.class_id) === String(cId) && String(e.id) !== String(targetEId)).sort((a,b)=>(a.display_no||99)-(b.display_no||99));
+          
+          if (availableExams.length === 0) {
+              window.customAlert('មិនមានការប្រឡងផ្សេងទៀតនៅក្នុងថ្នាក់នេះសម្រាប់ចម្លងទេ!');
+              return;
+          }
+
+          availableExams.forEach(e => {
+              sourceSelect.innerHTML += `<option value="${e.id}">${e.name}</option>`;
+          });
+
+          $('#copy-scores-modal').classList.remove('hidden');
+          $('#copy-scores-modal').classList.add('flex');
+      };
+
+      // ដំណើរការការចម្លង
+      $('#btn-execute-copy').onclick = () => {
+          const sourceEId = $('#copy-source-exam').value;
+          if (!sourceEId) {
+              window.customAlert('សូមជ្រើសរើសការប្រឡងដែលត្រូវចម្លងយកទិន្នន័យ!');
+              return;
+          }
+
+          const inputs = document.querySelectorAll('.grid-input');
+          let copiedCount = 0;
+
+          inputs.forEach(inp => {
+              const stuId = String(inp.dataset.student);
+              
+              if (inp.classList.contains('score-input')) {
+                  const subId = String(inp.dataset.subject);
+                  const sourceScore = scoresData.find(sc => String(sc.student_id) === stuId && String(sc.subject_id) === subId && String(sc.exam_id) === String(sourceEId));
+                  if (sourceScore && sourceScore.score !== '' && sourceScore.score !== null && sourceScore.score !== undefined) {
+                      inp.value = sourceScore.score;
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      copiedCount++;
+                  }
+              } else if (inp.classList.contains('abs-exc')) {
+                  const sourceAtt = attendancesData.find(a => String(a.student_id) === stuId && String(a.exam_id) === String(sourceEId));
+                  if (sourceAtt && sourceAtt.excused !== null && sourceAtt.excused !== undefined) {
+                      inp.value = sourceAtt.excused;
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      copiedCount++;
+                  }
+              } else if (inp.classList.contains('abs-unexc')) {
+                  const sourceAtt = attendancesData.find(a => String(a.student_id) === stuId && String(a.exam_id) === String(sourceEId));
+                  if (sourceAtt && sourceAtt.unexcused !== null && sourceAtt.unexcused !== undefined) {
+                      inp.value = sourceAtt.unexcused;
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      copiedCount++;
+                  }
+              }
+          });
+
+          $('#copy-scores-modal').classList.remove('flex');
+          $('#copy-scores-modal').classList.add('hidden');
+          
+          if (copiedCount > 0) {
+              notify(`បានទាញយកទិន្នន័យចំនួន ${copiedCount} ប្រឡោះ។ សូមចុចប៊ូតុង "រក្សាទុក" ដើម្បីបញ្ចប់!`, true);
+          } else {
+              notify('មិនមានទិន្នន័យសម្រាប់ចម្លងនៅក្នុងការប្រឡងដែលបានជ្រើសរើសទេ!', false);
+          }
+      };
+
+    </script>
+  </body>
+</html>
