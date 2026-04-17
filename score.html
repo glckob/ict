@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
-      body { font-family: 'Noto Sans Khmer', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+      body { font-family: 'Noto Sans Khmer', sans-serif; background-color: #f3f4f6; color: #1f2937; overflow: hidden; }
       .kh-heading { font-family: 'Moul', cursive; font-weight: normal; line-height: 1.8; }
       
       .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.875rem; border: 1px solid #d1d5db; background: #ffffff; color: #374151; font-weight: 600; border-radius: 0.5rem; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all .15s ease; }
@@ -40,7 +40,7 @@
     <div id="toast"></div>
 
     <!-- Login Screen -->
-    <section id="auth-shell" class="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-white">
+    <section id="auth-shell" class="h-screen w-full flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-white overflow-auto absolute inset-0 z-[100]">
       <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
         <div class="text-center mb-6">
           <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"><i class="fas fa-marker"></i></div>
@@ -56,80 +56,63 @@
     </section>
 
     <!-- Main App -->
-    <div id="app-shell" class="w-full min-h-screen hidden flex flex-col">
+    <div id="app-shell" class="w-full h-screen hidden flex flex-col overflow-hidden bg-white">
       
-      <!-- Top Navbar (Replaced Sidebar for more horizontal space) -->
-      <nav class="bg-white border-b border-gray-200 shadow-sm px-4 py-3 flex justify-between items-center sticky top-0 z-50">
-          <div class="flex items-center gap-4">
-              <a href="vcms.html" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold px-4 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-sm" title="ត្រឡប់ទៅទំព័រគ្រប់គ្រង">
-                  <i class="fas fa-arrow-left"></i> <span class="hidden md:block">ត្រឡប់ក្រោយ</span>
+      <!-- Top Navbar & Controls Combined -->
+      <nav class="bg-white border-b border-gray-300 shadow-sm p-2 flex flex-wrap justify-between items-center z-50 gap-2 shrink-0">
+          
+          <!-- Left side: Back Button & Selects -->
+          <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+              <a href="vcms.html" class="flex items-center justify-center w-10 h-10 text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-200 shadow-sm shrink-0" title="ត្រឡប់ទៅទំព័រគ្រប់គ្រង">
+                  <i class="fas fa-arrow-left"></i>
               </a>
-              <div class="h-8 w-px bg-gray-300 hidden md:block"></div>
-              <h1 class="text-xl font-bold text-blue-800 kh-heading flex items-center gap-2 hidden sm:flex">
-                  <i class="fas fa-marker text-blue-600"></i> បញ្ចូលពិន្ទុ
-              </h1>
-          </div>
-          <div class="flex items-center gap-3">
-              <div class="hidden md:block text-right">
-                  <div class="text-xs text-gray-500 font-semibold">គណនេយ្យ៖</div>
-                  <div id="user-email" class="text-sm font-bold text-blue-700 truncate max-w-[150px]">-</div>
+              <div class="h-6 w-px bg-gray-300 hidden sm:block mx-1"></div>
+              
+              <div class="flex-1 min-w-[140px]">
+                  <select id="score-class" class="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"></select>
               </div>
-              <button id="btn-sign-out" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-3 py-2 rounded-lg font-bold transition flex items-center gap-2">
-                  <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">ចាកចេញ</span>
+              <div class="flex-1 min-w-[150px]">
+                  <select id="score-exam" class="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"></select>
+              </div>
+          </div>
+          
+          <!-- Right side: Action Buttons -->
+          <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+              <button id="btn-export-excel" class="btn bg-green-50 text-green-700 border-green-200 hover:bg-green-100 py-1.5 px-3 text-sm flex-1 md:flex-none justify-center h-10" title="នាំចេញ Excel">
+                  <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">Excel</span>
+              </button>
+              <button id="btn-copy-scores-modal" class="btn bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 py-1.5 px-3 text-sm flex-1 md:flex-none justify-center h-10" title="ចម្លងពិន្ទុពីខែចាស់">
+                  <i class="fas fa-copy"></i> <span class="hidden sm:inline">ចម្លង</span>
+              </button>
+              <button id="btn-delete-all-scores" class="btn btn-danger py-1.5 px-3 text-sm flex-1 md:flex-none justify-center h-10" title="លុបទាំងអស់">
+                  <i class="fas fa-eraser"></i> <span class="hidden sm:inline">លុប</span>
+              </button>
+              <button id="btn-save-all-scores" class="btn btn-primary py-1.5 px-5 text-sm shadow-md flex-1 md:flex-none justify-center h-10" disabled>
+                  <i class="fas fa-save"></i> រក្សាទុក
+              </button>
+              
+              <div class="h-6 w-px bg-gray-300 hidden lg:block mx-1"></div>
+              
+              <button id="btn-sign-out" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 w-10 h-10 flex items-center justify-center rounded-lg font-bold transition shrink-0" title="ចាកចេញ">
+                  <i class="fas fa-sign-out-alt"></i>
               </button>
           </div>
       </nav>
 
-      <!-- Main Content -->
-      <div class="flex-1 bg-gray-50 p-4 sm:p-6">
-        <div class="max-w-[1400px] mx-auto">
-            
-            <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-200">
-              <!-- Controls -->
-              <div class="bg-gray-50 p-3 md:p-4 rounded-lg border border-gray-200 mb-4 flex flex-col lg:flex-row gap-4 items-end">
-                <div class="flex-1 w-full lg:max-w-xs">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសថ្នាក់</label>
-                    <select id="score-class" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base font-bold outline-none focus:ring-2 focus:ring-blue-500 bg-white"></select>
-                </div>
-                <div class="flex-1 w-full lg:max-w-xs">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសការប្រឡង (ខែ)</label>
-                    <select id="score-exam" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base font-bold text-blue-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white"></select>
-                </div>
-                
-                <div class="flex gap-2 w-full lg:w-auto flex-wrap ml-auto">
-                    <button id="btn-export-excel" class="btn bg-green-50 text-green-700 border-green-200 hover:bg-green-100 py-2 px-4 text-sm flex-1 md:flex-none" title="នាំចេញពិន្ទុខែនេះជា Excel">
-                        <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">នាំចេញ Excel</span>
-                    </button>
-                    <button id="btn-copy-scores-modal" class="btn bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100 py-2 px-4 text-sm flex-1 md:flex-none" title="ចម្លងពិន្ទុពីខែចាស់">
-                        <i class="fas fa-copy"></i> <span class="hidden sm:inline">ចម្លងពិន្ទុ</span>
-                    </button>
-                    <button id="btn-save-all-scores" class="btn btn-primary py-2 px-6 text-sm flex-1 md:flex-none shadow-md" disabled>
-                        <i class="fas fa-save"></i> រក្សាទុក
-                    </button>
-                    <button id="btn-delete-all-scores" class="btn btn-danger py-2 px-4 text-sm flex-1 md:flex-none" title="លុបពិន្ទុការប្រឡងនេះទាំងអស់">
-                        <i class="fas fa-eraser"></i> <span class="hidden sm:inline">លុបទាំងអស់</span>
-                    </button>
-                </div>
-              </div>
+      <!-- Information Alert Slim -->
+      <div class="text-xs sm:text-sm text-gray-600 bg-blue-50 px-3 py-1.5 border-b border-blue-100 flex items-center shrink-0 hidden" id="grid-info">
+          <i class="fas fa-info-circle text-blue-500 mr-2"></i> 
+          <span class="truncate">អ្នកអាចវាយបញ្ចូលពិន្ទុដោយប្រើ Keyboard (ព្រួញឡើងចុះ ឆ្វេងស្តាំ) និង Copy/Paste ពី Excel។ ក្រឡាពណ៌បៃតងបញ្ជាក់ថាពិន្ទុពេញ។</span>
+      </div>
 
-              <!-- Information Alert -->
-              <div class="mb-4 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-2 hidden" id="grid-info">
-                  <i class="fas fa-info-circle text-blue-500 mt-0.5"></i> 
-                  <div>អ្នកអាចវាយបញ្ចូលពិន្ទុដោយប្រើ Keyboard (ព្រួញឡើងចុះ ឆ្វេងស្តាំ ឬ Enter) និងអាច Copy ពិន្ទុពី Excel មក Paste បញ្ចូលក្នុងតារាងនេះបានដោយផ្ទាល់។ ក្រឡាពណ៌បៃតងបញ្ជាក់ថាពិន្ទុពេញ។</div>
-              </div>
-
-              <!-- Grid -->
-              <div class="overflow-auto rounded-lg border border-gray-300 max-h-[75vh] relative bg-gray-50 shadow-inner">
-                  <table class="w-full text-sm text-left border-collapse" id="table-scores">
-                      <thead class="bg-gray-200 sticky top-0 z-30 shadow-sm"><tr id="scores-header-row"></tr></thead>
-                      <tbody>
-                          <tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>
-                      </tbody>
-                  </table>
-              </div>
-            </div>
-
-        </div>
+      <!-- Main Content (Full Width & Height Grid) -->
+      <div class="flex-1 overflow-auto bg-gray-50 relative">
+          <table class="w-full text-sm text-left border-collapse" id="table-scores">
+              <thead class="bg-gray-200 sticky top-0 z-30 shadow-sm"><tr id="scores-header-row"></tr></thead>
+              <tbody>
+                  <tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold mt-10">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>
+              </tbody>
+          </table>
       </div>
     </div>
 
@@ -236,14 +219,6 @@
       function loadData() {
         clearData();
         
-        unsubscribes.push(onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'teachers', auth.currentUser.uid), s => { 
-            if(s.exists()) {
-                $('#user-email').textContent = s.data().name || auth.currentUser.email;
-            } else {
-                $('#user-email').textContent = auth.currentUser.email;
-            }
-        }));
-
         unsubscribes.push(onSnapshot(getCol('classes'), s => { 
             classesData = s.docs.map(d=>({id: d.id, ...d.data()})); 
             mapStudents(); 
@@ -338,7 +313,7 @@
         
         if(!cId || !eId) { 
             thead.innerHTML = ''; 
-            tbody.innerHTML = '<tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="100%" class="p-8 text-center text-gray-400 font-bold mt-10">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង ដើម្បីបង្ហាញតារាងពិន្ទុ</td></tr>';
             btnSave.disabled = true; 
             $('#grid-info').classList.add('hidden');
             return; 
@@ -363,7 +338,7 @@
         thead.innerHTML += `<th class="p-1 border border-gray-300 bg-red-100 text-center sticky top-0 z-30 w-12"><div class="font-bold text-red-800 text-[13px]">អ</div></th>`;
         
         if(stus.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="${subs.length + 4}" class="p-8 text-center text-gray-500">មិនមានសិស្សនៅក្នុងថ្នាក់នេះទេ</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${subs.length + 4}" class="p-8 text-center text-gray-500 mt-10">មិនមានសិស្សនៅក្នុងថ្នាក់នេះទេ</td></tr>`;
             return;
         }
 
@@ -684,7 +659,7 @@
                   
                   let tMax = 0;
                   subs.forEach(su => {
-                      const sc = scoresData.find(s => String(s.student_id) === String(stu.id) && String(s.subject_id) === String(su.id) && String(s.exam_id) === String(ex.id));
+                      const sc = scoresData.find(s => String(s.student_id) === String(stu.id) && String(s.subject_id) === String(su.id) && String(sc.exam_id) === String(ex.id));
                       const scoreVal = (sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) ? Number(sc.score) : '';
                       row.push(scoreVal);
                       if(scoreVal !== '') tMax += scoreVal;
