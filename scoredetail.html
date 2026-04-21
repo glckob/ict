@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="km">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>តារាងស្រង់ពិន្ទុលម្អិត - VCMS</title>
+    <link rel="icon" href="https://www.dropbox.com/scl/fi/2tds3u7hcslgrtcnfimdg/nv.ico?rlkey=t4swsdf8hv7iwbg23pjknp0wn&st=84qf47bv&dl=1">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;500;600;700&family=Moul&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+      body { font-family: 'Noto Sans Khmer', sans-serif; background-color: #f3f4f6; color: #1f2937; }
+      .kh-heading { font-family: 'Moul', cursive; font-weight: normal; }
+      
+      /* ការកំណត់សម្រាប់បោះពុម្ព A3 ផ្តេក */
+      @media print {
+        @page { size: A3 landscape; margin: 0.5cm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { background-color: white !important; margin: 0; padding: 0; }
+        .no-print { display: none !important; }
+        body.is-printing #app-shell, body.is-printing #auth-shell { display: none !important; }
+        body.is-printing #print-container { display: block !important; width: 100%; }
+        
+        .print-table { width: 100%; border-collapse: collapse; font-size: 11px; font-family: 'Noto Sans Khmer', sans-serif; }
+        .print-table th, .print-table td { border: 1px solid #1f2937; padding: 4px; text-align: center; }
+        .print-table th { background-color: #f3f4f6; font-weight: bold; }
+        .print-table td.text-left { text-align: left; padding-left: 5px; }
+        .grade-f { color: #dc2626 !important; font-weight: bold; }
+      }
+      
+      .table-wrapper { overflow: auto; height: calc(100vh - 210px); width: 100%; }
+      .screen-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .screen-table th, .screen-table td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: center; white-space: nowrap; }
+      .screen-table th { background-color: #f9fafb; font-weight: 700; position: sticky; top: 0; z-index: 10; }
+      .screen-table thead tr:nth-child(2) th { top: 40px; } /* Adjust based on first row height */
+      .screen-table td.text-left { text-align: left; }
+      .screen-table tbody tr:hover { background-color: #eff6ff; }
+      
+      #toast { position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 12px 20px; border-radius: 8px; color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.15); opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    
+    <div id="toast"></div>
+
+    <!-- Global Loading Overlay -->
+    <div id="global-loader" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm z-[9999] flex flex-col items-center justify-center text-white hidden">
+        <i class="fas fa-circle-notch fa-spin text-6xl mb-5 text-blue-400"></i>
+        <h2 class="font-moul text-2xl tracking-wider mb-2">សូមរង់ចាំ...</h2>
+        <p class="text-gray-200 font-medium text-lg">កំពុងទាញទិន្នន័យពីប្រព័ន្ធ</p>
+    </div>
+
+    <!-- Hidden Print Container -->
+    <div id="print-container" class="hidden bg-white text-black p-4"></div>
+
+    <!-- Login Screen -->
+    <section id="auth-shell" class="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-white">
+      <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border-t-4 border-blue-600">
+        <div class="text-center mb-6">
+          <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"><i class="fas fa-file-invoice"></i></div>
+          <h1 class="text-2xl font-bold text-gray-800 font-moul mb-2">តារាងស្រង់ពិន្ទុលម្អិត</h1>
+          <p class="text-gray-500 text-sm font-semibold">VCMS - ប្រព័ន្ធគ្រប់គ្រង</p>
+        </div>
+        <form id="form-auth" class="space-y-4">
+          <div><label class="block text-sm font-bold text-gray-700 mb-1">អ៊ីមែល (Email)</label><input id="auth-email" type="email" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" required /></div>
+          <div><label class="block text-sm font-bold text-gray-700 mb-1">ពាក្យសម្ងាត់ (Password)</label><input id="auth-password" type="password" class="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none bg-gray-50" required /></div>
+          <button id="btn-sign-in" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition mt-2" type="submit">ចូលប្រព័ន្ធ</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Main App -->
+    <div id="app-shell" class="w-full min-h-screen hidden flex flex-col no-print">
+      
+      <!-- Top Navbar -->
+      <nav class="bg-white border-b border-gray-200 px-6 py-3 flex justify-between items-center shadow-sm sticky top-0 z-30">
+          <div class="flex items-center gap-4">
+              <a href="vcms15.html" class="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-bold bg-gray-100 hover:bg-blue-50 px-4 py-2 rounded-lg transition">
+                  <i class="fas fa-arrow-left"></i> ត្រឡប់ក្រោយ
+              </a>
+              <h1 class="text-xl font-bold text-blue-800 kh-heading ml-4 hidden md:block"><i class="fas fa-table text-blue-500 mr-2"></i> តារាងស្រង់ពិន្ទុលម្អិត (A3)</h1>
+          </div>
+          <div class="flex items-center gap-4">
+              <div class="text-sm font-bold text-gray-600 hidden sm:block"><i class="fas fa-user-circle text-gray-400"></i> <span id="user-email"></span></div>
+              <button id="btn-sign-out" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold transition text-sm"><i class="fas fa-sign-out-alt"></i> ចាកចេញ</button>
+          </div>
+      </nav>
+
+      <!-- Content -->
+      <div class="flex-1 p-6 max-w-[1600px] mx-auto w-full space-y-6">
+          
+          <!-- Controls -->
+          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                  <div>
+                      <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសថ្នាក់</label>
+                      <select id="sel-class" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-gray-800 bg-gray-50"></select>
+                  </div>
+                  <div>
+                      <label class="block text-sm font-bold text-gray-700 mb-1">ជ្រើសរើសការប្រឡង</label>
+                      <select id="sel-exam" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none font-bold text-blue-700 bg-blue-50"></select>
+                  </div>
+                  <div>
+                      <label class="block text-sm font-bold text-gray-700 mb-1">កាលបរិច្ឆេទបោះពុម្ព</label>
+                      <input type="text" id="print-date" placeholder="ឧ. ថ្ងៃទី២៥ ខែកក្កដា ឆ្នាំ២០២៤" class="w-full border border-gray-300 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none">
+                  </div>
+                  <div class="flex gap-2">
+                      <button id="btn-print" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-sm" disabled><i class="fas fa-print mr-2"></i>បោះពុម្ព A3</button>
+                  </div>
+              </div>
+          </div>
+
+          <!-- Table Preview -->
+          <div class="mt-2 w-full">
+              <div class="flex justify-between items-center mb-2 px-1">
+                  <h2 class="font-bold text-gray-700"><i class="fas fa-eye text-blue-500 mr-2"></i>ទិដ្ឋភាពមើលមុន (Preview)</h2>
+                  <span class="text-xs text-gray-500 bg-white px-2 py-1 rounded shadow-sm border">រំកិលទៅឆ្វេង-ស្តាំ ដើម្បីមើលទិន្នន័យពេញ</span>
+              </div>
+              <div class="table-wrapper bg-white shadow-sm border border-gray-300" id="table-render-area">
+                  <div class="text-center text-gray-400 py-10 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង រួចទិន្នន័យនឹងបង្ហាញដោយស្វ័យប្រវត្តិ</div>
+              </div>
+          </div>
+
+      </div>
+    </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+      import { getFirestore, collection, onSnapshot, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+      const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyD1l6lkUCMkOPPE-gR3a8XardlGUUfR3pg", authDomain: "ictexam-1ebeb.firebaseapp.com", projectId: "ictexam-1ebeb", storageBucket: "ictexam-1ebeb.firebasestorage.app", messagingSenderId: "18694490334", appId: "1:18694490334:web:c5071b02bf72100a78da4f" };
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'ictexam-app';
+
+      const getCol = (name) => collection(db, 'artifacts', appId, 'users', auth.currentUser.uid, name);
+      const $ = (q) => document.querySelector(q);
+      
+      window.customAlert = (message) => { alert(message); };
+      window.showLoader = () => { const el = $('#global-loader'); if(el) el.classList.remove('hidden'); };
+      window.hideLoader = () => { const el = $('#global-loader'); if(el) el.classList.add('hidden'); };
+      
+      let publicStudentsRaw = [], classesData = [], studentsData = [], subjectsData = [], examsData = [], scoresData = [], settingsData = {};
+      let unsubscribes = [];
+      let currentReportData = null; // Store processed data for printing
+
+      function clearData() { 
+          publicStudentsRaw=[]; classesData=[]; studentsData=[]; subjectsData=[]; examsData=[]; scoresData=[]; settingsData={}; 
+          unsubscribes.forEach(u=>u()); unsubscribes=[]; 
+      }
+
+      function mapStudents() {
+          studentsData = [];
+          publicStudentsRaw.forEach(ps => {
+              const psClass = String(ps.CLASS || '').trim().toLowerCase();
+              const matchedClass = classesData.find(c => String(c.name || '').trim().toLowerCase() === psClass);
+              if (matchedClass) {
+                  studentsData.push({ id: ps.ID, class_id: matchedClass.id, first_name: ps.FNAME || '', last_name: ps.LNAME || '', gender: ps.GEN || '', code: ps.ID });
+              }
+          });
+          studentsData.sort((a, b) => a.first_name.localeCompare(b.first_name, 'km'));
+      }
+
+      function loadData() {
+        clearData();
+        window.showLoader();
+        
+        let loadedCount = 0;
+        let initialLoadDone = false;
+        
+        // មុខងារត្រួតពិនិត្យការទាញទិន្នន័យ ពេលបានទាំង៦ផ្នែកទើបលាក់ Loading
+        const checkReady = () => {
+            if(initialLoadDone) return;
+            loadedCount++;
+            if(loadedCount >= 6) {
+                window.hideLoader();
+                initialLoadDone = true;
+            }
+        };
+        
+        unsubscribes.push(onSnapshot(doc(db, 'artifacts', appId, 'public', 'data', 'teachers', auth.currentUser.uid), s => { 
+            if(s.exists()) {
+                const data = s.data();
+                settingsData = {
+                    teacherName: data.name || '', schoolName: data.schoolName || 'វិទ្យាល័យកូប', district: data.district || '',
+                    signatureURL: data.signatureURL || '', sealURL: data.sealURL || ''
+                };
+                $('#user-email').textContent = data.name || auth.currentUser.email;
+            } else {
+                settingsData.schoolName = 'វិទ្យាល័យកូប';
+                $('#user-email').textContent = auth.currentUser.email;
+            }
+            checkReady();
+        }));
+
+        unsubscribes.push(onSnapshot(getCol('classes'), s => { 
+            classesData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            mapStudents(); 
+            updateClassSelect(); 
+            checkReady();
+        }));
+        
+        unsubscribes.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'students'), s => { 
+            publicStudentsRaw = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            mapStudents(); 
+            checkReady();
+        }));
+        
+        unsubscribes.push(onSnapshot(getCol('subjects'), s => { 
+            subjectsData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            checkReady();
+        }));
+        
+        unsubscribes.push(onSnapshot(getCol('exams'), s => { 
+            examsData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            updateExamSelect(); 
+            checkReady();
+        }));
+        
+        unsubscribes.push(onSnapshot(getCol('scores'), s => { 
+            scoresData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+            checkReady();
+        }));
+      }
+
+      $('#form-auth').addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = $('#btn-sign-in'); btn.innerHTML = 'កំពុងផ្ទៀងផ្ទាត់...'; btn.disabled = true;
+          try { await signInWithEmailAndPassword(auth, $('#auth-email').value.trim(), $('#auth-password').value.trim()); } 
+          catch(err) { window.customAlert('អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវ'); btn.innerHTML = 'ចូលប្រព័ន្ធ'; btn.disabled = false; }
+      });
+      
+      $('#btn-sign-out').addEventListener('click', () => signOut(auth));
+
+      onAuthStateChanged(auth, user => {
+          if(user) { 
+              $('#auth-shell').classList.add('hidden'); 
+              $('#app-shell').classList.remove('hidden'); 
+              loadData(); 
+          } else { 
+              $('#auth-shell').classList.remove('hidden'); 
+              $('#app-shell').classList.add('hidden'); 
+              clearData(); 
+              window.hideLoader();
+          }
+      });
+
+      function updateClassSelect() {
+          const sel = $('#sel-class');
+          const current = sel.value;
+          sel.innerHTML = '<option value="">-- ជ្រើសរើសថ្នាក់ --</option>';
+          [...classesData].sort((a,b)=>(a.display_no||99)-(b.display_no||99)).forEach(c => {
+              sel.innerHTML += `<option value="${c.id}">${c.name} (${c.year})</option>`;
+          });
+          if(current && Array.from(sel.options).some(o=>o.value===current)) sel.value = current;
+          updateExamSelect();
+      }
+
+      $('#sel-class').addEventListener('change', () => {
+          updateExamSelect();
+          generateTableData();
+      });
+
+      function updateExamSelect() {
+          const sel = $('#sel-exam');
+          const cId = $('#sel-class').value;
+          const current = sel.value;
+          sel.innerHTML = '<option value="">-- ជ្រើសរើសការប្រឡង --</option>';
+          if(cId) {
+              [...examsData].filter(e=>e.class_id===cId).sort((a,b)=>(a.display_no||99)-(b.display_no||99)).forEach(e => {
+                  sel.innerHTML += `<option value="${e.id}">${e.name} (${e.month})</option>`;
+              });
+              
+              // បន្ថែមជម្រើសគណនាពិសេស (Aggregations)
+              sel.innerHTML += `<optgroup label="លទ្ធផលបូកសរុប (Aggregations)">
+                  <option value="avg_group1">ខែឆមាស១ (គណនា AVG Group 1)</option>
+                  <option value="avg_group2">ខែឆមាស២ (គណនា AVG Group 2)</option>
+                  <option value="sem1">ប្រចាំឆមាស១ (AVG G1 + SM1)</option>
+                  <option value="sem2">ប្រចាំឆមាស២ (AVG G2 + SM2)</option>
+                  <option value="final">ប្រចាំឆ្នាំសិក្សា (FINAL RESULT)</option>
+              </optgroup>`;
+          }
+          if(current && Array.from(sel.options).some(o=>o.value===current)) sel.value = current;
+      }
+      
+      $('#sel-exam').addEventListener('change', generateTableData);
+
+      // Helper សម្រាប់ទាញយកឈ្មោះការប្រឡងទោះជាជម្រើសពិសេស
+      function getExamNameDisplay(eId) {
+          const specs = {
+              'avg_group1': 'ខែឆមាស១',
+              'avg_group2': 'ខែឆមាស២',
+              'sem1': 'ឆមាសទី១',
+              'sem2': 'ឆមាសទី២',
+              'final': 'ឆ្នាំសិក្សា'
+          };
+          if (specs[eId]) return specs[eId];
+          const eObj = examsData.find(e => e.id === eId);
+          return eObj ? eObj.name : '........';
+      }
+
+      // Calculate Grade based on Score / MaxScore
+      function calcGrade(score, max) {
+          if (score === '' || score === null || score === undefined || max === 0) return '';
+          let s = parseFloat(score); let m = parseFloat(max);
+          if (isNaN(s) || isNaN(m)) return '';
+          
+          let base50 = (s / m) * 50;
+          if (base50 >= 45) return 'A';
+          if (base50 >= 40) return 'B';
+          if (base50 >= 35) return 'C';
+          if (base50 >= 30) return 'D';
+          if (base50 >= 25) return 'E';
+          return 'F';
+      }
+
+      // មុខងារទាញទិន្នន័យដោយស្វ័យប្រវត្តិ (Auto-fetch)
+      function generateTableData() {
+          const cId = $('#sel-class').value;
+          const eId = $('#sel-exam').value;
+          if(!cId || !eId) {
+              $('#table-render-area').innerHTML = '<div class="text-center text-gray-400 py-10 font-bold">សូមជ្រើសរើសថ្នាក់ និងការប្រឡង រួចទិន្នន័យនឹងបង្ហាញដោយស្វ័យប្រវត្តិ</div>';
+              $('#btn-print').disabled = true;
+              return;
+          }
+          
+          const stus = studentsData.filter(s=>s.class_id===cId);
+          const subs = [...subjectsData].filter(s=>s.class_id===cId).sort((a,b)=>(a.display_no||99)-(b.display_no||99));
+          
+          if(stus.length === 0 || subs.length === 0) {
+              $('#table-render-area').innerHTML = '<div class="text-center text-red-500 py-10 font-bold">មិនមានទិន្នន័យគ្រប់គ្រាន់សម្រាប់ថ្នាក់នេះទេ!</div>';
+              $('#btn-print').disabled = true;
+              return;
+          }
+
+          // គណនាពិន្ទុពេញសរុប (Total Max Score)
+          let totalMaxScore = subs.reduce((sum, su) => sum + parseFloat(su.max_score||50), 0);
+
+          // រៀបចំទិន្នន័យសម្រាប់ការប្រឡងបូកសរុប (Special Aggregations)
+          let isSpecial = ['avg_group1', 'avg_group2', 'sem1', 'sem2', 'final'].includes(eId);
+          let g1Exams = examsData.filter(e => e.class_id === cId && e.group_name === 'Group 1');
+          let g2Exams = examsData.filter(e => e.class_id === cId && e.group_name === 'Group 2');
+          let sm1Exams = examsData.filter(e => e.class_id === cId && e.group_name === 'SM1');
+          let sm2Exams = examsData.filter(e => e.class_id === cId && e.group_name === 'SM2');
+
+          const getAvg = (stuId, subId, exmArr) => {
+              if (!exmArr || exmArr.length === 0) return 0;
+              let sum = 0; let hasData = false;
+              exmArr.forEach(ex => {
+                  let sc = scoresData.find(s => s.student_id === stuId && s.subject_id === subId && s.exam_id === ex.id);
+                  if (sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) {
+                      sum += parseFloat(sc.score); hasData = true;
+                  }
+              });
+              return hasData ? (sum / exmArr.length) : 0;
+          };
+
+          const calcV = (stuId, subId) => {
+              if (!isSpecial) {
+                  let sc = scoresData.find(s => s.student_id === stuId && s.subject_id === subId && s.exam_id === eId);
+                  return (sc && sc.score !== '' && sc.score !== null) ? parseFloat(sc.score) : null;
+              } else {
+                  let v = 0;
+                  if (eId === 'avg_group1') v = getAvg(stuId, subId, g1Exams);
+                  else if (eId === 'avg_group2') v = getAvg(stuId, subId, g2Exams);
+                  else if (eId === 'sem1') v = (getAvg(stuId, subId, g1Exams) + getAvg(stuId, subId, sm1Exams)) / 2;
+                  else if (eId === 'sem2') v = (getAvg(stuId, subId, g2Exams) + getAvg(stuId, subId, sm2Exams)) / 2;
+                  else if (eId === 'final') {
+                      let s1 = (getAvg(stuId, subId, g1Exams) + getAvg(stuId, subId, sm1Exams)) / 2;
+                      let s2 = (getAvg(stuId, subId, g2Exams) + getAvg(stuId, subId, sm2Exams)) / 2;
+                      v = (s1 + s2) / 2;
+                  }
+                  return parseFloat(v.toFixed(2));
+              }
+          };
+
+          // គណនាពិន្ទុទុកមុនសម្រាប់សិស្សទាំងអស់និងមុខវិជ្ជាទាំងអស់
+          let computedScores = {}; 
+          stus.forEach(stu => {
+              computedScores[stu.id] = {};
+              subs.forEach(su => {
+                  computedScores[stu.id][su.id] = calcV(stu.id, su.id);
+              });
+          });
+
+          // Pre-calculate ranks per subject
+          let subjectRanks = {}; // { subId: { stuId: rank } }
+          subs.forEach(su => {
+              subjectRanks[su.id] = {};
+              let list = [];
+              stus.forEach(stu => {
+                  let v = computedScores[stu.id][su.id];
+                  if (v !== null) list.push({ id: stu.id, s: v });
+              });
+              list.sort((a,b) => b.s - a.s);
+              let currRank = 1;
+              for(let i=0; i<list.length; i++) {
+                  if(i > 0 && list[i].s < list[i-1].s) currRank = i + 1;
+                  subjectRanks[su.id][list[i].id] = currRank;
+              }
+          });
+
+          // Pre-calculate total score & overall rank
+          let stuData = stus.map(stu => {
+              let tScore = 0;
+              let subDetails = [];
+              subs.forEach(su => {
+                  let v = computedScores[stu.id][su.id];
+                  let rank = v !== null ? subjectRanks[su.id][stu.id] : '-';
+                  let grade = v !== null ? calcGrade(v, parseFloat(su.max_score||50)) : '-';
+                  if(v !== null) tScore += v;
+                  subDetails.push({ score: v !== null ? v : '-', rank, grade });
+              });
+              
+              let tAvg = totalMaxScore > 0 ? (tScore / totalMaxScore) * 50 : 0;
+              let tGrade = calcGrade(tScore, totalMaxScore);
+              
+              return { stu, tScore, tAvg, tGrade, subDetails };
+          });
+
+          // Sort overall by total score to assign total rank
+          stuData.sort((a,b) => b.tScore - a.tScore);
+          let currTotalRank = 1;
+          for(let i=0; i<stuData.length; i++) {
+              if(i > 0 && stuData[i].tScore < stuData[i-1].tScore) currTotalRank = i + 1;
+              stuData[i].totalRank = currTotalRank;
+          }
+
+          // Finally, re-sort alphabetically for display as usually required by standard reporting
+          stuData.sort((a,b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
+
+          // Store for printing
+          currentReportData = { classId: cId, examId: eId, subs: subs, rows: stuData, totalMax: totalMaxScore };
+
+          // Build HTML Table for Screen
+          let thead1 = `<tr><th rowspan="2" class="w-12">ល.រ</th><th rowspan="2" class="min-w-[150px] text-left">ឈ្មោះសិស្ស</th>`;
+          let thead2 = `<tr>`;
+          
+          subs.forEach(su => {
+              thead1 += `<th colspan="3" class="border-l-2 border-l-gray-300 bg-blue-50 text-blue-800">${su.name} <br><span class="text-xs text-gray-500 font-normal">ពិន្ទុពេញ: ${su.max_score||50}</span></th>`;
+              thead2 += `<th class="border-l-2 border-l-gray-300 text-gray-600">ពិន្ទុ</th><th class="text-gray-600">លេខ</th><th class="text-gray-600">និទ្ទេស</th>`;
+          });
+          thead1 += `<th rowspan="2" class="border-l-2 border-l-blue-400 bg-blue-100 text-blue-900">ពិន្ទុសរុប</th>
+                     <th rowspan="2" class="bg-green-100 text-green-900">មធ្យមភាគ</th>
+                     <th rowspan="2" class="bg-orange-100 text-orange-900">ចំណាត់ថ្នាក់</th>
+                     <th rowspan="2" class="bg-purple-100 text-purple-900">និទ្ទេសរួម</th></tr>`;
+          thead2 += `</tr>`;
+
+          let tbody = '';
+          stuData.forEach((r, idx) => {
+              let isFemale = r.stu.gender === 'F' || r.stu.gender === 'ស្រី';
+              let prefix = isFemale ? 'ក.' : '';
+              let fullName = prefix + r.stu.first_name + ' ' + r.stu.last_name;
+              
+              let tr = `<tr>
+                  <td>${idx + 1}</td>
+                  <td class="text-left font-bold text-gray-800">${fullName}</td>`;
+              
+              r.subDetails.forEach(sd => {
+                  let fColor = sd.grade === 'F' ? 'text-red-600 font-bold bg-red-50' : (sd.score !== '-' ? 'font-bold text-gray-800' : 'text-gray-400');
+                  tr += `<td class="border-l-2 border-l-gray-300 ${fColor}">${sd.score}</td>`;
+                  tr += `<td class="${fColor}">${sd.rank}</td>`;
+                  tr += `<td class="${fColor}">${sd.grade}</td>`;
+              });
+              
+              tr += `<td class="border-l-2 border-l-blue-400 font-bold text-blue-700">${r.tScore.toFixed(2).replace('.00','')}</td>`;
+              tr += `<td class="font-bold text-green-600">${r.tAvg.toFixed(2).replace('.00','')}</td>`;
+              tr += `<td class="font-bold text-orange-600">${r.totalRank}</td>`;
+              tr += `<td class="font-bold ${r.tGrade === 'F' ? 'text-red-600' : 'text-purple-600'}">${r.tGrade}</td>`;
+              tr += `</tr>`;
+              tbody += tr;
+          });
+
+          $('#table-render-area').innerHTML = `<table class="screen-table shadow-sm"><thead>${thead1}${thead2}</thead><tbody>${tbody}</tbody></table>`;
+          $('#btn-print').disabled = false;
+      }
+
+      // PRINT LOGIC
+      $('#btn-print').addEventListener('click', () => {
+          if(!currentReportData) return;
+          
+          const cObj = classesData.find(c => c.id === currentReportData.classId);
+          const examName = getExamNameDisplay(currentReportData.examId);
+          
+          const sName = settingsData.schoolName || 'វិទ្យាល័យកូប';
+          const dName = settingsData.district || 'ការិយាល័យ អ.យ.ក';
+          const tName = settingsData.teacherName || '';
+          
+          let pDate = $('#print-date').value.trim();
+          if(!pDate) pDate = 'ថ្ងៃទី.......ខែ.......ឆ្នាំ.......';
+
+          let totalMax = currentReportData.totalMax;
+
+          // -------------------------------------------------------------
+          // FIXED 65-ROW FIT LOGIC: កំណត់ទំហំថេរដែលអាចផ្ទុកសិស្ស ៦៥នាក់ ក្នុង១ទំព័រ A3 ដាច់ខាត
+          // ដោយមិនបង្រួមចុះឡើងឡើយ ទោះសិស្សមានតិចឬច្រើន ក៏វារក្សាទំហំដូចគ្នា
+          // -------------------------------------------------------------
+
+          // កសាង CSS សម្រាប់ទំព័រ Print (Static Fit for 65 rows)
+          let dynamicStyles = `
+          <style>
+              .p-wrapper { width: 100%; box-sizing: border-box; } /* ដក overflow: hidden ចេញ ដើម្បីកុំអោយកាត់បាតត្រា */
+              .p-header-top { display: flex; justify-content: space-between; font-family: 'Moul', cursive; margin-bottom: 0px; font-size: 9pt; line-height: 1.3; position: relative; z-index: 1; }
+              .p-title-main { text-align: center; font-family: 'Moul', cursive; font-size: 14pt; margin-top: -20px; margin-bottom: 6px; position: relative; z-index: 2; }
+              .p-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; font-family: 'Noto Sans Khmer', sans-serif; }
+              .p-table th, .p-table td { border: 1px solid #1f2937; padding: 1.5px 3px; text-align: center; white-space: nowrap; line-height: 1.1; }
+              .p-table th { background-color: #f3f4f6; font-weight: bold; font-size: 8pt; padding: 2px 2px; }
+              .p-table td.text-left { text-align: left; padding-left: 5px; white-space: nowrap; }
+              .p-grade-f { color: #dc2626 !important; font-weight: bold; }
+              .p-footer { display: flex; justify-content: space-between; margin-top: 10px; font-size: 9pt; line-height: 1.4; position: relative; z-index: 2; }
+              
+              /* ការកំណត់សម្រាប់ត្រា (កំណត់ margin: auto ដើម្បីអោយចំកណ្តាល និងប្តូរ margin-bottom) */
+              .p-seal { height: 130px; margin: -30px auto -55px auto; display: block; mix-blend-mode: multiply; object-fit: contain; position: relative; z-index: -1; pointer-events: none; }
+              
+              /* ការកំណត់សម្រាប់ហត្ថលេខា (ដាក់នៅកណ្តាលចន្លោះ) */
+              .p-sig { height: 60px; margin: -5px auto -15px auto; display: block; mix-blend-mode: multiply; object-fit: contain; position: relative; z-index: -1; }
+              
+              /* កំណត់ឱ្យអក្សរអណ្តែតលើត្រា និងហត្ថលេខា */
+              .txt-front { position: relative; z-index: 1; }
+          </style>
+          `;
+
+          // Build Print Table Head
+          let thead1 = `<tr><th rowspan="2" style="width: 2%;">ល.រ</th><th rowspan="2" style="width: 15%;">ឈ្មោះសិស្ស</th>`;
+          let thead2 = `<tr>`;
+          
+          currentReportData.subs.forEach(su => {
+              thead1 += `<th colspan="3" style="border-left: 2px solid #000;">${su.name}<br><span style="font-size: 0.85em; font-weight: normal;">(${su.max_score||50})</span></th>`;
+              thead2 += `<th style="border-left: 2px solid #000;">ពិន្ទុ</th><th>លេខ</th><th>និទ្ទេស</th>`;
+          });
+          thead1 += `<th rowspan="2" style="border-left: 2px solid #000; width: 5%;">ពិន្ទុសរុប<br><span style="font-size: 0.85em; font-weight: normal;">(${totalMax})</span></th>
+                     <th rowspan="2" style="width: 5%;">មធ្យមភាគ</th>
+                     <th rowspan="2" style="width: 4%;">ចំណាត់<br>ថ្នាក់</th>
+                     <th rowspan="2" style="width: 4%;">និទ្ទេស<br>រួម</th></tr>`;
+          thead2 += `</tr>`;
+
+          // Build Print Table Body (ទិន្នន័យពិតប្រាកដ មានប៉ុន្មានបង្ហាញប៉ុណ្ណឹង)
+          let tbody = '';
+          currentReportData.rows.forEach((r, idx) => {
+              let isFemale = r.stu.gender === 'F' || r.stu.gender === 'ស្រី';
+              let prefix = isFemale ? 'ក.' : '';
+              let fullName = prefix + r.stu.first_name + ' ' + r.stu.last_name;
+
+              let tr = `<tr>
+                  <td>${idx + 1}</td>
+                  <td class="text-left"><b>${fullName}</b></td>`;
+              
+              r.subDetails.forEach(sd => {
+                  let isF = sd.grade === 'F';
+                  let fClass = isF ? 'class="p-grade-f"' : '';
+                  tr += `<td style="border-left: 2px solid #000;" ${fClass}>${sd.score}</td>`;
+                  tr += `<td ${fClass}>${sd.rank}</td>`;
+                  tr += `<td ${fClass}>${sd.grade}</td>`;
+              });
+              
+              tr += `<td style="border-left: 2px solid #000; font-weight: bold;">${r.tScore.toFixed(2).replace('.00','')}</td>`;
+              tr += `<td>${r.tAvg.toFixed(2).replace('.00','')}</td>`;
+              tr += `<td style="font-weight: bold;">${r.totalRank}</td>`;
+              tr += `<td style="font-weight: bold; ${r.tGrade === 'F' ? 'color: #dc2626;' : ''}">${r.tGrade}</td>`;
+              tr += `</tr>`;
+              tbody += tr;
+          });
+
+          // Compile Full Print HTML
+          let printHtml = `
+          ${dynamicStyles}
+          <div class="p-wrapper">
+              <div class="p-header-top">
+                  <div style="text-align: left;">
+                      ${dName}<br>
+                      <span style="font-family: 'Noto Sans Khmer', sans-serif; font-weight: bold; font-size: 1.1em;">${sName}</span><br>
+                      <span style="font-family: 'Noto Sans Khmer', sans-serif;">ថ្នាក់ទី ${cObj.name} (ឆ្នាំសិក្សា ${cObj.year})</span>
+                  </div>
+                  <div style="text-align: center;">
+                      ព្រះរាជាណាចក្រកម្ពុជា<br>
+                      ជាតិ សាសនា ព្រះមហាក្សត្រ<br>
+                      <div style="font-family: 'Noto Sans Khmer'; font-weight: bold;">🙧 🙟 ✾ 🙝 🙥</div>
+                  </div>
+              </div>
+              
+              <div class="p-title-main">តារាងស្រង់ពិន្ទុ ${examName}</div>
+              
+              <table class="p-table">
+                  <thead>${thead1}${thead2}</thead>
+                  <tbody>${tbody}</tbody>
+              </table>
+              
+              <div class="p-footer">
+                  <div style="text-align: center; width: 33%;">
+                      <div class="txt-front">បានឃើញ និងឯកភាព<br><b>នាយកសាលា</b></div>
+                      ${settingsData.sealURL ? `<img src="${settingsData.sealURL}" class="p-seal">` : `<div style="height: 50px; margin-top: 5px;"></div>`}
+                  </div>
+                  <div style="text-align: center; width: 33%;">
+                      <br><b class="txt-front">គ្រិស្តសាសនូបត្ថម្ភក៍ / គណៈគ្រប់គ្រង</b><br>
+                      <div style="height: 50px; margin-top: 5px;"></div>
+                  </div>
+                  <div style="text-align: center; width: 33%;">
+                      <div class="txt-front">ធ្វើនៅ ${sName} ${pDate}<br><b>គ្រូបន្ទុកថ្នាក់</b></div>
+                      ${settingsData.signatureURL ? `<img src="${settingsData.signatureURL}" class="p-sig">` : `<div style="height: 40px; margin-top: 5px; margin-bottom: 10px;"></div>`}
+                      <div class="txt-front"><b>${tName}</b></div>
+                  </div>
+              </div>
+          </div>
+          `;
+
+          const printContainer = document.getElementById('print-container');
+          printContainer.innerHTML = printHtml;
+          
+          document.body.classList.add('is-printing');
+          setTimeout(() => {
+              window.print();
+              setTimeout(() => {
+                  document.body.classList.remove('is-printing');
+                  printContainer.innerHTML = '';
+              }, 500);
+          }, 300);
+      });
+
+    </script>
+  </body>
+</html>
