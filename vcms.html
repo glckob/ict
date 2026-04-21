@@ -105,7 +105,7 @@
           <button data-tab="subjects" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-book w-5 text-center"></i> មុខវិជ្ជា</button>
           <button data-tab="exams" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-file-alt w-5 text-center"></i> ការប្រឡង</button>
           
-          <a href="score.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-colors border-l-4 border-transparent hover:border-blue-500"><i class="fas fa-marker w-5 text-center text-blue-500"></i> បញ្ចូលពិន្ទុ</a>
+          <a href="score.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-colors border-l-4 border-transparent hover:border-blue-500"><i class="fas fa-marker w-5 text-center text-blue-500"></i> បញ្ចូលពិន្ទុ<i class="fas fa-external-link-alt"></i></a>
           
           <div class="my-2 border-t border-gray-100"></div><div class="px-4 py-1 text-xs font-bold text-gray-400 uppercase">ផ្នែកបោះពុម្ពលទ្ធផល</div>
           <button data-tab="reports" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-chart-bar w-5 text-center text-blue-500"></i> ប្រចាំខែ</button>     
@@ -115,14 +115,17 @@
           <button data-tab="specialgr2" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-star w-5 text-center text-purple-500"></i> ប្រចាំឆមាស២</button>
           <button data-tab="final" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-award w-5 text-center text-green-500"></i> ប្រចាំឆ្នាំសិក្សា</button>
                     <!-- New Link for Bulletin replacing the tab (Modified to open in same tab) -->
+            <a href="scoredetail.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-teal-50 hover:text-teal-600 transition-colors border-l-4 border-transparent hover:border-teal-500">
+              <i class="fas fa-chart-bar w-5 text-center text-teal-500"></i> សម្រង់ពិន្ទុ <i class="fas fa-external-link-alt"></i>
+            </a>
             <a href="transcription.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-teal-50 hover:text-teal-600 transition-colors border-l-4 border-transparent hover:border-teal-500">
-              <i class="fas fa-file-invoice w-5 text-center text-teal-500"></i> ព្រឹត្តិបត្រពិន្ទុ
+              <i class="fas fa-file-invoice w-5 text-center text-teal-500"></i> ព្រឹត្តិបត្រពិន្ទុ <i class="fas fa-external-link-alt"></i>
             </a>  
             <a href="stcard.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-teal-50 hover:text-teal-600 transition-colors border-l-4 border-transparent hover:border-teal-500">
-              <i class="fas fa-id-card w-5 text-center text-teal-500"></i> ការសិស្ស
+              <i class="fas fa-id-card w-5 text-center text-teal-500"></i> ការសិស្ស <i class="fas fa-external-link-alt"></i>
             </a> 
              <a href="structure.html" class="w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold hover:bg-teal-50 hover:text-teal-600 transition-colors border-l-4 border-transparent hover:border-teal-500">
-              <i class="fas fa-sitemap w-5 text-center text-teal-500"></i> រចនាសម្ព័ន្ធថ្នាក់
+              <i class="fas fa-sitemap w-5 text-center text-teal-500"></i> រចនាសម្ព័ន្ធ<i class="fas fa-up-right-from-square"></i>
             </a>                
           <div class="my-2 border-t border-gray-100"></div>
           <button data-tab="settings" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-cog w-5 text-center"></i> ការកំណត់</button>
@@ -150,6 +153,17 @@
           <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center mb-6">
               <h1 class="text-2xl font-bold text-blue-800 kh-heading flex items-center gap-3"><i class="fas fa-chalkboard-teacher text-blue-600"></i> បន្ទុកថ្នាក់ខ្ញុំ<span class="text-gray-500 font-sans font-medium text-base ml-2 bg-gray-100 px-3 py-1 rounded-full border">សាលា: <span id="header-school">មិនទាន់កំណត់</span></span></h1>
               <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold border border-blue-100 shadow-sm"><i class="fas fa-folder-open mr-1"></i> <span id="header-tab">ថ្នាក់រៀន</span></div>
+          </div>
+
+          <!-- Print Date Selector (Global for Print Tabs) -->
+          <div id="print-date-container" class="hidden bg-white p-4 rounded-xl shadow-sm border border-blue-200 mb-6 flex flex-wrap items-center gap-4 transition-all">
+              <div class="text-blue-800 font-bold"><i class="fas fa-calendar-alt mr-2"></i>កាលបរិច្ឆេទបោះពុម្ព៖</div>
+              <div class="flex gap-2">
+                  <input type="text" id="g-print-day" class="border border-gray-300 rounded-lg px-3 py-2 w-20 text-center outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="ថ្ងៃទី">
+                  <input type="text" id="g-print-month" class="border border-gray-300 rounded-lg px-3 py-2 w-32 text-center outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="ខែ">
+                  <input type="text" id="g-print-year" class="border border-gray-300 rounded-lg px-3 py-2 w-24 text-center outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="ឆ្នាំ">
+              </div>
+              <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100"><i class="fas fa-info-circle text-blue-400"></i> ទុកទទេបើចង់សរសេរដោយដៃ។ ឧទាហរណ៍៖ ថ្ងៃទី <b>១២</b> ខែ <b>កក្កដា</b> ឆ្នាំ <b>២០២៤</b></div>
           </div>
 
           <!-- CLASSES -->
@@ -478,7 +492,27 @@
           };
       };
       
-      window.customAlert = (message) => { alert(message); };
+      window.customAlert = (message) => {
+          const existing = document.getElementById('custom-alert-modal');
+          if (existing) existing.remove();
+          
+          const modalHtml = `
+          <div id="custom-alert-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+              <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col transform transition-all duration-300 scale-100">
+                  <div class="p-5 border-b bg-blue-50 text-blue-800 font-moul font-bold flex items-center gap-2">
+                      <i class="fas fa-info-circle text-blue-600"></i> ការជូនដំណឹង
+                  </div>
+                  <div class="p-6 text-gray-700 text-center whitespace-pre-wrap leading-relaxed font-medium">${message}</div>
+                  <div class="p-4 border-t flex justify-center bg-gray-50">
+                      <button id="custom-alert-ok" class="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition shadow-md w-full">យល់ព្រម</button>
+                  </div>
+              </div>
+          </div>`;
+          document.body.insertAdjacentHTML('beforeend', modalHtml);
+          document.getElementById('custom-alert-ok').onclick = () => {
+              document.getElementById('custom-alert-modal').remove();
+          };
+      };
 
       let publicStudentsRaw = [];
       let classesData = [], studentsData = [], subjectsData = [], examsData = [], scoresData = [], attendancesData = [], settingsData = {};
@@ -589,7 +623,7 @@
           e.preventDefault();
           const btn = $('#btn-sign-in'); btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> កំពុងផ្ទៀងផ្ទាត់...'; btn.disabled = true;
           try { await signInWithEmailAndPassword(auth, $('#auth-email').value.trim(), $('#auth-password').value.trim()); } 
-          catch(err) { alert('អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវ'); btn.innerHTML = 'ចូលប្រព័ន្ធ <i class="fas fa-arrow-right"></i>'; btn.disabled = false; }
+          catch(err) { window.customAlert('អ៊ីមែល ឬលេខសម្ងាត់មិនត្រឹមត្រូវ'); btn.innerHTML = 'ចូលប្រព័ន្ធ <i class="fas fa-arrow-right"></i>'; btn.disabled = false; }
       });
       
       $('#btn-sign-out').addEventListener('click', () => signOut(auth));
@@ -610,7 +644,17 @@
         btn.addEventListener('click', () => {
           document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
           document.querySelectorAll('.tab').forEach(t => t.classList.add('hidden')); $('#tab-' + btn.dataset.tab).classList.remove('hidden');
-          $('#header-tab').textContent = btn.textContent.trim(); refreshUI();
+          $('#header-tab').textContent = btn.textContent.trim(); 
+          
+          // Show/Hide Print Date Container if the tab is for Printing
+          const printTabs = ['reports', 'avggr1', 'avggr2', 'specialgr1', 'specialgr2', 'final'];
+          if (printTabs.includes(btn.dataset.tab)) {
+              $('#print-date-container').classList.remove('hidden');
+          } else {
+              $('#print-date-container').classList.add('hidden');
+          }
+          
+          refreshUI();
         });
       });
 
@@ -794,7 +838,7 @@
       
       $('#form-subject').onsubmit = async(e) => { 
           e.preventDefault(); 
-          if(!$('#subject-class').value) return alert('សូមជ្រើសរើសថ្នាក់!');
+          if(!$('#subject-class').value) return window.customAlert('សូមជ្រើសរើសថ្នាក់!');
           const data = { class_id: $('#subject-class').value, display_no: Number($('#subject-display').value), name: $('#subject-name').value, max_score: Number($('#subject-max').value) };
           if(editingSubjectId) {
               await updateDoc(getDocR('subjects', editingSubjectId), { ...data, updated_at: serverTimestamp() });
@@ -810,7 +854,7 @@
       
       $('#form-exam').onsubmit = async(e) => { 
           e.preventDefault(); 
-          if(!$('#exam-class').value) return alert('សូមជ្រើសរើសថ្នាក់!');
+          if(!$('#exam-class').value) return window.customAlert('សូមជ្រើសរើសថ្នាក់!');
           const data = { class_id: $('#exam-class').value, name: $('#exam-name').value, group_name: $('#exam-group').value, month: $('#exam-month').value, display_no: Number($('#exam-display').value) };
           if(editingExamId) {
               await updateDoc(getDocR('exams', editingExamId), { ...data, updated_at: serverTimestamp() });
@@ -840,7 +884,7 @@
               notify('កែប្រែព័ត៌មានសិស្សជោគជ័យ!');
               $('#edit-std-modal').classList.add('hidden');
           } catch(err) {
-              alert('មានបញ្ហា: ' + err.message);
+              window.customAlert('មានបញ្ហា: ' + err.message);
           } finally {
               btn.innerHTML = orig; btn.disabled = false;
           }
@@ -873,7 +917,7 @@
               }, {merge:true}); 
               notify("រក្សាទុកការកំណត់ជោគជ័យ!"); 
           } catch(err) {
-              alert(err.message);
+              window.customAlert(err.message);
           } finally {
               btn.innerHTML = origText; btn.disabled = false;
           }
@@ -928,9 +972,29 @@
           }
 
           // Deletes
-          const btnDelCls = e.target.closest('.btn-del-class'); if(btnDelCls && confirm('លុបថ្នាក់នេះ?')) await deleteDoc(getDocR('classes', btnDelCls.dataset.id));
-          const btnDelSub = e.target.closest('.btn-del-subject'); if(btnDelSub && confirm('លុបមុខវិជ្ជានេះ?')) await deleteDoc(getDocR('subjects', btnDelSub.dataset.id));
-          const btnDelExm = e.target.closest('.btn-del-exam'); if(btnDelExm && confirm('លុបការប្រឡងនេះ?')) await deleteDoc(getDocR('exams', btnDelExm.dataset.id));
+          const btnDelCls = e.target.closest('.btn-del-class'); 
+          if(btnDelCls) {
+              window.customConfirm('តើអ្នកពិតជាចង់លុបថ្នាក់នេះមែនទេ?', async () => {
+                  await deleteDoc(getDocR('classes', btnDelCls.dataset.id));
+                  notify('លុបថ្នាក់ជោគជ័យ!');
+              });
+          }
+          
+          const btnDelSub = e.target.closest('.btn-del-subject'); 
+          if(btnDelSub) {
+              window.customConfirm('តើអ្នកពិតជាចង់លុបមុខវិជ្ជានេះមែនទេ?', async () => {
+                  await deleteDoc(getDocR('subjects', btnDelSub.dataset.id));
+                  notify('លុបមុខវិជ្ជាជោគជ័យ!');
+              });
+          }
+          
+          const btnDelExm = e.target.closest('.btn-del-exam'); 
+          if(btnDelExm) {
+              window.customConfirm('តើអ្នកពិតជាចង់លុបការប្រឡងនេះមែនទេ?', async () => {
+                  await deleteDoc(getDocR('exams', btnDelExm.dataset.id));
+                  notify('លុបការប្រឡងជោគជ័យ!');
+              });
+          }
       });
 
       // FILTER EVENTS
@@ -943,8 +1007,90 @@
       $('#avggr1-class').onchange = refreshUI; $('#avggr2-class').onchange = refreshUI;
       $('#specialgr1-class').onchange = refreshUI; $('#specialgr2-class').onchange = refreshUI; $('#final-class').onchange = refreshUI;
 
+      // GET PRINT DATE STRING HELPER
+      window.getPrintDateString = () => {
+          const d = $('#g-print-day') ? $('#g-print-day').value.trim() : '';
+          const m = $('#g-print-month') ? $('#g-print-month').value.trim() : '';
+          const y = $('#g-print-year') ? $('#g-print-year').value.trim() : '';
+
+          if (d || m || y) {
+              const dd = d ? `${d}` : '.......';
+              const mm = m ? `${m}` : '.......';
+              const yy = y ? `${y}` : '.......';
+              return `ថ្ងៃទី ${dd} ខែ ${mm} ឆ្នាំ ${yy}`;
+          }
+          return 'ថ្ងៃទី.......ខែ.......ឆ្នាំ.......';
+      };
+
+      // --- PRINT DATE VALIDATION ---
+      window.validatePrintDate = () => {
+          const dInput = document.getElementById('g-print-day');
+          const mInput = document.getElementById('g-print-month');
+          const yInput = document.getElementById('g-print-year');
+          
+          if (!dInput || !mInput || !yInput) return true;
+
+          const dStr = dInput.value.trim();
+          const mStr = mInput.value.trim();
+          const yStr = yInput.value.trim();
+
+          if (!dStr || !mStr || !yStr) return true; 
+
+          const k2a = s => s.replace(/[០-៩]/g, d => '០១២៣៤៥៦៧៨៩'.indexOf(d));
+          const a2k = s => String(s).replace(/[0-9]/g, d => '០១២៣៤៥៦៧៨៩'[d]);
+          
+          let day = parseInt(k2a(dStr));
+          let year = parseInt(k2a(yStr));
+          
+          if (isNaN(day) || isNaN(year)) return true;
+
+          let month = -1;
+          let monthText = mStr;
+          const khMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+          
+          let mNum = parseInt(k2a(mStr));
+          if (!isNaN(mNum) && mNum >= 1 && mNum <= 12) {
+              month = mNum;
+              monthText = khMonths[month - 1];
+          } else {
+              let idx = khMonths.findIndex(m => mStr.includes(m));
+              if (idx !== -1) {
+                  month = idx + 1;
+                  monthText = khMonths[idx];
+              }
+          }
+
+          if (month === -1) return true;
+
+          // កំណត់ចំនួនថ្ងៃអតិបរមាក្នុងខែ (ទោះជាឆ្នាំបង្រួម-Leap Year ក៏ប្រព័ន្ធ JS អាចចាប់បានដោយស្វ័យប្រវត្តិ)
+          let maxDays = new Date(year, month, 0).getDate();
+          if (day > maxDays || day < 1) {
+              window.customAlert(`❌ ការកំណត់ថ្ងៃខែមិនត្រឹមត្រូវ!\n\nខែ ${monthText} ឆ្នាំ ${a2k(year)} មានត្រឹមតែ ${a2k(maxDays)} ថ្ងៃប៉ុណ្ណោះ។`);
+              dInput.value = '';
+              dInput.focus();
+              return false;
+          }
+
+          // កំណត់រកថ្ងៃអាទិត្យ (getDay() លេខ 0 គឺថ្ងៃអាទិត្យ)
+          let dateObj = new Date(year, month - 1, day);
+          if (dateObj.getDay() === 0) {
+              window.customAlert(`❌ ការកំណត់ថ្ងៃខែមិនត្រឹមត្រូវ!\n\nថ្ងៃទី ${a2k(day)} ខែ ${monthText} ឆ្នាំ ${a2k(year)} គឺជា ថ្ងៃអាទិត្យ ដែលជាថ្ងៃឈប់សម្រាក។\nសូមមេត្តាជ្រើសរើសថ្ងៃធ្វើការវិញ!`);
+              dInput.value = '';
+              dInput.focus();
+              return false;
+          }
+          
+          return true;
+      };
+
+      // ហៅមុខងារផ្ទៀងផ្ទាត់រាល់ពេលដែលគ្រូវាយបញ្ចូលហើយដក Mouse ចេញ
+      document.getElementById('g-print-day').addEventListener('change', window.validatePrintDate);
+      document.getElementById('g-print-month').addEventListener('change', window.validatePrintDate);
+      document.getElementById('g-print-year').addEventListener('change', window.validatePrintDate);
+
       // --- PRINT REPORT FUNCTION ---
       window.printReport = (tableId, baseTitle, classSelectId) => {
+          if (!window.validatePrintDate()) return;
           const table = document.getElementById(tableId);
           if (!table || table.rows.length <= 1) {
               window.customAlert("មិនមានទិន្នន័យសម្រាប់បោះពុម្ពទេ!");
@@ -970,15 +1116,34 @@
           const trs = Array.from(table.querySelectorAll('tbody tr'));
           const data = trs.map(tr => {
               const tds = tr.querySelectorAll('td');
+              const len = tds.length;
+              if (len < 7) return { no: '', name: '', gender: '', score: '', avg: '', rank: '', grade: '' };
+              
+              // ទាញយកទិន្នន័យជួរឈរទី ៤ ចុងក្រោយគេជានិច្ច ទោះបីមានមុខវិជ្ជាប៉ុន្មានក៏ដោយ
               return {
                   no: tds[0].textContent,
                   name: tds[1].textContent,
                   gender: tds[2].textContent,
-                  score: tds[3].textContent,
-                  avg: tds[4].textContent,
-                  rank: tds[5].textContent,
-                  grade: tds[6].textContent
+                  score: tds[len - 4].textContent,
+                  avg: tds[len - 3].textContent,
+                  rank: tds[len - 2].textContent,
+                  grade: tds[len - 1].textContent
               };
+          });
+
+          // តម្រៀបទិន្នន័យតាមចំណាត់ថ្នាក់ (សិស្សពូកែមកមុន) សម្រាប់ការបោះពុម្ព
+          data.sort((a, b) => {
+              const rankA = parseInt(a.rank) || 9999;
+              const rankB = parseInt(b.rank) || 9999;
+              return rankA - rankB;
+          });
+
+          // រៀបចំលេខរៀង (ល.រ) ឡើងវិញពី ១ ដល់ចំនួនសិស្ស តាមលំដាប់ចំណាត់ថ្នាក់
+          let currentNo = 1;
+          data.forEach(d => {
+              if (d.name && d.name.trim() !== '') {
+                  d.no = pad2(currentNo++);
+              }
           });
 
           let passAll = 0, passF = 0, failAll = 0, failF = 0;
@@ -1074,7 +1239,7 @@
               <div style="flex: 1;">${renderHalf(rightData)}</div>
           </div>
           
-          <div style="display: flex; flex-direction: column; gap: 5px; font-family: 'Noto Sans Khmer', sans-serif; font-size: 11px; margin-bottom: 20px;">
+          <div style="display: flex; flex-direction: column; gap: 5px; font-family: 'Noto Sans Khmer', sans-serif; font-size: 11px; margin-bottom: 5px;">
               <div style="display: flex; justify-content: space-between;">
                   <div style="flex: 1;">
                       <b>ជាប់មធ្យមភាគ (ABCDE) ${passAll} នាក់/ស្រី ${passF} នាក់</b><br>
@@ -1091,22 +1256,25 @@
               </div>
           </div>
           
-          <div style="display: flex; justify-content: space-between; align-items: flex-end; font-family: 'Noto Sans Khmer', sans-serif; font-size: 12px; margin-top: 10px; page-break-inside: avoid;">
-              <div style="text-align: center; width: 33%;">
-                  <br>
-                  បានឃើញ និងឯកភាព<br>
-                  <b>នាយកសាលា</b>
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; font-family: 'Noto Sans Khmer', sans-serif; font-size: 12px; margin-top: 5px; page-break-inside: avoid;">
+              <div style="text-align: center; width: 33%; margin-bottom: 40px;"> <!-- ថែម margin-bottom: 20px ដើម្បីរុញឡើងលើ ១ បន្ទាត់ -->
+                  <div style="position: relative; z-index: 2;">
+                      បានឃើញ និងឯកភាព<br>
+                      <b>នាយកសាលា</b><br> 
+                  </div>
+                  ${settingsData.sealURL ? `<img src="${settingsData.sealURL}" style="height: 160px; margin-top: -30px; margin-bottom: -80px; mix-blend-mode: multiply; object-fit: contain; position: relative; z-index: 1; display: inline-block;">` : `<div style="height: 60px;"></div>`}
               </div>
-              <div style="text-align: center; width: 33%;">
+              <div style="text-align: center; width: 33%; margin-bottom: 0px;">
                   ${settingsData.telegram ? `
-                  <div id="print-qr-code" style="display: inline-block; margin-bottom: 4px; padding: 4px; background: white; border-radius: 4px;"></div><br>
+                  <div id="print-qr-code" style="display: inline-block; margin-bottom: 2px; padding: 2px; background: white; border-radius: 4px;"></div><br>
                   <span style="font-size: 10px;">ស្កេនដើម្បីចូលក្រុម Telegram</span>
                   ` : ''}
               </div>
-              <div style="text-align: center; width: 33%;">
-                  ធ្វើនៅ ${sName} ថ្ងៃទី.......ខែ.......ឆ្នាំ.......<br>
-                  <b>គ្រូបន្ទុកថ្នាក់</b><br><br><br><br>
-                  ${tName}
+              <div style="text-align: center; width: 33%; margin-bottom: 55px;"> <!-- រុញផ្នែកគ្រូឡើងលើ ៣ បន្ទាត់ (~55px) -->
+                  ធ្វើនៅ ${sName} ${window.getPrintDateString()}<br>
+                  <b>គ្រូបន្ទុកថ្នាក់</b><br>
+                  ${settingsData.signatureURL ? `<img src="${settingsData.signatureURL}" style="height: 60px; margin-top: -5px; margin-bottom: -15px; display: block; margin-left: auto; margin-right: auto; object-fit: contain; mix-blend-mode: multiply; position: relative; z-index: 1;">` : `<div style="height: 40px;"></div>`}
+                  <div style="position: relative; z-index: 2;">${tName}</div>
               </div>
           </div>
           `;
@@ -1160,6 +1328,7 @@
 
       // --- HELPER FUNCTION: RENDER CERTIFICATE LAYOUT ---
       window.executePrintCertificate = (top5, cId, reportTitle) => {
+          if (!window.validatePrintDate()) return;
           if(!top5 || top5.length === 0 || !top5[0] || top5[0].tMax === 0) {
               window.customAlert("មិនមានទិន្នន័យពិន្ទុសម្រាប់បោះពុម្ពតារាងកិត្តិយសទេ!");
               return;
@@ -1237,13 +1406,13 @@
               </div>
 
               <!-- Moved Bottom Elements under the pyramid -->
-              <div style="display: flex; justify-content: space-between; align-items: flex-start; font-family: 'Noto Sans Khmer', sans-serif; font-size: 14px; margin-top: 20px; padding: 0 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-end; font-family: 'Noto Sans Khmer', sans-serif; font-size: 14px; margin-top: 20px; padding: 0 20px;">
                   
                   <!-- Left: Principal -->
                   <div style="text-align: center; width: 33%;">
-                      <br><br><br><br>
                       បានឃើញ និងឯកភាព<br>
-                      <b>នាយកសាលា</b>
+                      <b>នាយកសាលា</b><br>
+                      ${settingsData.sealURL ? `<img src="${settingsData.sealURL}" style="height: 75px; margin: 10px auto 5px auto; display: inline-block; object-fit: contain;">` : `<br><br><br><br>`}
                   </div>
 
                   <!-- Center: QR Rainbow Using Mix-Blend-Mode -->
@@ -1256,9 +1425,9 @@
                   
                   <!-- Right: Teacher -->
                   <div style="text-align: center; width: 33%;">
-                      <br><br><br>
-                      ${sName} ថ្ងៃទី.......ខែ.......ឆ្នាំ.......<br>
-                      <b>គ្រូបន្ទុកថ្នាក់</b><br><br><br><br>
+                      ធ្វើនៅ ${sName} ${window.getPrintDateString()}<br>
+                      <b>គ្រូបន្ទុកថ្នាក់</b><br>
+                      ${settingsData.signatureURL ? `<img src="${settingsData.signatureURL}" style="height: 60px; margin: 10px auto 5px auto; display: inline-block; object-fit: contain;">` : `<br><br><br><br>`}
                       <span style="font-weight: bold; font-family: 'Moul', cursive;">${tName}</span>
                   </div>
 
@@ -1511,6 +1680,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-report', cols, rows);
       }
 
@@ -1519,9 +1690,15 @@
           const stus = getStus(cId), subs = getSubs(cId), exms = examsData.filter(e=>String(e.class_id)===String(cId) && e.group_name==='Group 1');
           if(exms.length===0) return renderTable('table-avggr1',[],[]);
           const totalCoef = subs.reduce((sum, su) => sum + (su.max_score ? Number(su.max_score)/50 : 0), 0);
-          const cols = ['ពិន្ទុសរុប', 'ម.ភាគ', 'ចំ.ថ្នាក់', 'និទ្ទេស'];
+          
+          const cols = [];
+          subs.forEach(su => cols.push(su.name));
+          cols.push('ពិន្ទុសរុប', 'ម.ភាគ', 'ចំ.ថ្នាក់', 'និទ្ទេស');
+          
           let rows = stus.map(stu => {
               let tMax = 0;
+              let subAverages = []; 
+              
               subs.forEach(su => {
                   let sum = 0; 
                   exms.forEach(ex => { 
@@ -1529,10 +1706,11 @@
                       if(sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) sum += Number(sc.score); 
                   });
                   const avg = exms.length > 0 ? (sum / exms.length) : 0;
+                  subAverages.push(avg); 
                   tMax += avg;
               });
               const avg50 = totalCoef > 0 ? (tMax / totalCoef) : 0;
-              return { stu, name: `${stu.first_name} ${stu.last_name}`, gender: stu.gender, avg50, tMax, cells: [] };
+              return { stu, name: `${stu.first_name} ${stu.last_name}`, gender: stu.gender, avg50, tMax, subAverages, cells: [] };
           }).sort((a,b) => b.tMax - a.tMax);
           
           rows.forEach((r,i) => {
@@ -1547,6 +1725,10 @@
               r.grade = grade;
               r.rank = i + 1;
               
+              r.subAverages.forEach(subAvg => {
+                  r.cells.push({ val: subAvg === 0 ? '' : fNum(subAvg), color: 'text-gray-800 font-medium' });
+              });
+              
               r.cells.push(
                   { val: fNum(r.tMax), color: 'text-blue-600' },
                   { val: fNum(r.avg50), color: 'text-green-600' },
@@ -1554,6 +1736,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-avggr1', cols, rows);
       }
 
@@ -1562,9 +1746,15 @@
           const stus = getStus(cId), subs = getSubs(cId), exms = examsData.filter(e=>String(e.class_id)===String(cId) && e.group_name==='Group 2');
           if(exms.length===0) return renderTable('table-avggr2',[],[]);
           const totalCoef = subs.reduce((sum, su) => sum + (su.max_score ? Number(su.max_score)/50 : 0), 0);
-          const cols = ['ពិន្ទុសរុប', 'ម.ភាគ', 'ចំ.ថ្នាក់', 'និទ្ទេស'];
+          
+          const cols = [];
+          subs.forEach(su => cols.push(su.name));
+          cols.push('ពិន្ទុសរុប', 'ម.ភាគ', 'ចំ.ថ្នាក់', 'និទ្ទេស');
+          
           let rows = stus.map(stu => {
               let tMax = 0;
+              let subAverages = []; 
+              
               subs.forEach(su => {
                   let sum = 0; 
                   exms.forEach(ex => { 
@@ -1572,10 +1762,11 @@
                       if(sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) sum += Number(sc.score); 
                   });
                   const avg = exms.length > 0 ? (sum / exms.length) : 0;
+                  subAverages.push(avg); 
                   tMax += avg;
               });
               const avg50 = totalCoef > 0 ? (tMax / totalCoef) : 0;
-              return { stu, name: `${stu.first_name} ${stu.last_name}`, gender: stu.gender, avg50, tMax, cells: [] };
+              return { stu, name: `${stu.first_name} ${stu.last_name}`, gender: stu.gender, avg50, tMax, subAverages, cells: [] };
           }).sort((a,b) => b.tMax - a.tMax);
           
           rows.forEach((r,i) => {
@@ -1590,6 +1781,10 @@
               r.grade = grade;
               r.rank = i + 1;
               
+              r.subAverages.forEach(subAvg => {
+                  r.cells.push({ val: subAvg === 0 ? '' : fNum(subAvg), color: 'text-gray-800 font-medium' });
+              });
+              
               r.cells.push(
                   { val: fNum(r.tMax), color: 'text-blue-600' },
                   { val: fNum(r.avg50), color: 'text-green-600' },
@@ -1597,6 +1792,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-avggr2', cols, rows);
       }
 
@@ -1644,6 +1841,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-specialgr1', cols, rows);
       }
 
@@ -1691,6 +1890,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-specialgr2', cols, rows);
       }
 
@@ -1740,6 +1941,8 @@
                   { val: grade, color: grade === 'F' ? 'text-red-600' : 'text-blue-600' }
               );
           });
+          
+          rows.sort((a, b) => a.stu.first_name.localeCompare(b.stu.first_name, 'km'));
           renderTable('table-final', cols, rows);
       }
 
