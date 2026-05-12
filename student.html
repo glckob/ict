@@ -15,21 +15,29 @@
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+
+  <!-- HTML2Canvas & QRCode -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <style>
-    body { font-family: 'Noto Sans Khmer', sans-serif; }
+    body { font-family: 'Noto Sans Khmer', sans-serif; scroll-behavior: smooth; }
     .font-moul { font-family: 'Moul', cursive; font-weight: normal; line-height: 1.8; }
     
-    .tab-active { background-color: #eff6ff; color: #1d4ed8; border-left: 4px solid #1d4ed8; }
-    .tab-inactive { color: #4b5563; }
-    .tab-inactive:hover { background-color: #f3f4f6; }
-    .option-checked { background-color: #dbeafe; border-color: #3b82f6; }
+    .ql-editor { padding: 0 !important; }
+    .ql-editor img { max-width: 100%; height: auto; border-radius: 0.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem; }
+    
     .loader {
       border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%;
       width: 40px; height: 40px; animation: spin 1s linear infinite;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    @media print {
+      body { visibility: hidden; background-color: transparent !important; }
+      #card-print-area { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; display: flex !important; justify-content: center !important; }
+      #header-container, #app-container, .modal-backdrop { display: none !important; }
+    }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col relative">
@@ -37,15 +45,86 @@
   <div id="header-container"></div>
   <main id="app-container" class="p-4 flex-1"></main>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <!-- Student Card Modal -->
+  <div id="studentCardModal" class="fixed inset-0 bg-black bg-opacity-70 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col relative">
+      <div class="absolute top-3 right-3 z-10">
+         <button onclick="window.closeCardModal()" class="w-8 h-8 bg-black bg-opacity-30 text-white rounded-full flex items-center justify-center hover:bg-red-500 transition"><i class="fas fa-times"></i></button>
+      </div>
+      
+      <div id="card-print-area" class="w-full relative bg-white overflow-hidden" style="min-height: 500px;">
+         <div class="absolute inset-0 z-0">
+            <img id="cardBgImage" src="https://i.imgur.com/s46369v.png" class="w-full h-full object-cover" onerror="this.onerror=null; this.style.display='none';">
+         </div>
+         <div class="relative z-10 flex flex-col items-center pt-28 pb-6 px-6 h-full">
+            <div class="w-32 h-32 rounded-lg bg-gray-200 border-4 border-white shadow-lg overflow-hidden mb-4 relative z-20">
+               <img id="cardPhoto" src="" class="w-full h-full object-cover">
+            </div>
+            <h2 id="cardName" class="text-2xl font-moul text-blue-900 mb-1 drop-shadow-sm text-center">ឈ្មោះសិស្ស</h2>
+            <div class="bg-blue-800 text-white px-4 py-1 rounded-full text-sm font-bold shadow-md mb-6 tracking-widest" id="cardId">ID: S000</div>
+            <div class="w-full bg-white bg-opacity-90 rounded-2xl p-4 shadow-sm border border-blue-100 backdrop-blur-sm mb-4">
+               <div class="grid grid-cols-2 gap-y-3 gap-x-2 text-sm text-gray-800">
+                  <div class="font-bold text-gray-500">ភេទ៖</div><div id="cardGen" class="font-bold text-right text-blue-900">ប្រុស</div>
+                  <div class="font-bold text-gray-500">ថ្នាក់ទី៖</div><div id="cardClass" class="font-bold text-right text-blue-900">10A</div>
+                  <div class="font-bold text-gray-500">ឆ្នាំកំណើត៖</div><div id="cardYYYY" class="font-bold text-right text-blue-900">2005</div>
+                  <div class="font-bold text-gray-500">ឆ្នាំសិក្សា៖</div><div id="cardYear" class="font-bold text-right text-blue-900">2023-2024</div>
+               </div>
+            </div>
+            <div class="mt-auto bg-white p-2 rounded-xl shadow-sm border"><div id="cardQRCode" class="w-16 h-16"></div></div>
+         </div>
+         <img id="cardSealImage" src="" class="absolute bottom-4 left-4 w-20 opacity-80 hidden z-10 mix-blend-multiply" onerror="this.onerror=null; this.style.display='none';">
+      </div>
+      <div class="p-4 bg-gray-50 flex justify-center gap-3 border-t">
+         <button onclick="window.downloadCard()" class="flex-1 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition shadow-md flex items-center justify-center gap-2"><i class="fas fa-download"></i> ទាញយករូបភាព</button>
+      </div>
+    </div>
+  </div>
 
-    // --- Custom Modal ---
+  <!-- Change Password Modal -->
+  <div id="changePassModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+      <div class="p-5 border-b bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+        <h3 class="text-xl font-moul text-blue-800"><i class="fas fa-key text-blue-600 mr-2"></i> ប្តូរពាក្យសម្ងាត់</h3>
+        <button onclick="window.closeChangePassModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-6">
+        <form onsubmit="window.saveNewPassword(event)" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 text-sm font-bold mb-1">លេខសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input type="password" id="newPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីរបស់អ្នក">
+              <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('newPass', this)"></i>
+            </div>
+          </div>
+          <div>
+            <label class="block text-gray-700 text-sm font-bold mb-1">បញ្ជាក់លេខសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
+            <div class="relative">
+              <input type="password" id="confirmPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីម្តងទៀត">
+              <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('confirmPass', this)"></i>
+            </div>
+          </div>
+          <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+            <button type="button" onclick="window.closeChangePassModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button>
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-save"></i> រក្សាទុក</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    // --- Data URIs for Fallback Images (ការពារកុំឲ្យជាប់ Loading Titlebar) ---
+    const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' fill='%239ca3af'%3ENo Photo%3C/text%3E%3C/svg%3E";
+    const fallbackAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23e5e7eb'/%3E%3Cpath d='M20 20a6 6 0 100-12 6 6 0 000 12zm-8 10c0-4.418 3.582-8 8-8s8 3.582 8 8v2H12v-2z' fill='%239ca3af'/%3E%3C/svg%3E";
+
+    // --- Custom Alert/Confirm ---
     window.customAlert = (message, callback) => {
         const modalHtml = `
-        <div id="custom-alert-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+        <div id="custom-alert-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
                 <div class="p-5 border-b bg-blue-50 text-blue-800 font-moul font-bold flex items-center gap-2">
                     <i class="fas fa-info-circle"></i> ព័ត៌មាន
@@ -65,15 +144,15 @@
 
     window.customConfirm = (message, onYes, onNo) => {
         const modalHtml = `
-        <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
+        <div id="custom-confirm-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col">
                 <div class="p-5 border-b bg-orange-50 text-orange-800 font-moul font-bold flex items-center gap-2">
                     <i class="fas fa-question-circle"></i> បញ្ជាក់
                 </div>
-                <div class="p-6 text-gray-700 text-center whitespace-pre-wrap">${message}</div>
-                <div class="p-4 border-t flex justify-end gap-3">
-                    <button id="custom-confirm-no" class="bg-gray-200 text-gray-800 px-5 py-2 rounded-xl font-bold hover:bg-gray-300 transition">បោះបង់</button>
-                    <button id="custom-confirm-yes" class="bg-orange-500 text-white px-5 py-2 rounded-xl font-bold hover:bg-orange-600 transition">យល់ព្រម</button>
+                <div class="p-6 text-gray-700 text-center whitespace-pre-wrap leading-relaxed">${message}</div>
+                <div class="p-4 border-t flex justify-end gap-3 bg-gray-50">
+                    <button id="custom-confirm-no" class="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-xl font-bold hover:bg-gray-300 transition">បោះបង់</button>
+                    <button id="custom-confirm-yes" class="bg-orange-500 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-600 transition shadow-md">យល់ព្រម</button>
                 </div>
             </div>
         </div>`;
@@ -99,525 +178,834 @@
         messagingSenderId: "18694490334",
         appId: "1:18694490334:web:c5071b02bf72100a78da4f"
       };
+
       app = initializeApp(firebaseConfig);
       auth = getAuth(app);
       db = getFirestore(app);
       appId = typeof __app_id !== 'undefined' ? __app_id : 'ictexam-app'; 
     } catch (error) { console.error("Firebase init error:", error); }
 
-    let studentsData = [], questions = [], results = [], teachersData = []; 
-    let firebaseUser = null, currentUser = null, userRole = null;    
-    let loadingData = true, errorMsg = '';
+    // --- Global State ---
+    let questions = [];
+    let results = [];
+    let teachersData = [];
+    let globalSettings = { cardBgUrl: 'https://i.imgur.com/s46369v.png', sealImageUrl: '' };
     
-    // State
-    let selectedMonth = '', selectedTeacherId = '', quizStarted = false, quizSubmitted = false;
-    let currentAnswers = {}, currentScore = { got: 0, total: 0, needsGrading: false };
-    let availableQuestions = [], studentTab = 'exams', currentQuizIsLesson = false;
-    let internetTime = new Date(), currentMonthName = '', timeLeft = 0, timerInterval = null, quizStartTimestamp = null, currentQuizDuration = 60 * 60;
-    
-    let viewingResultId = null; 
-    let lastResultId = null;    
-    let isChangePassModalOpen = false;
+    let firebaseUser = null;
+    let currentUser = null; 
+    let loadingData = true;
 
-    const standardMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+    // Student Exam State
+    let activeDashboardView = 'main'; // 'main', 'exams', 'lessons'
+    let activeExamQuestions = null;
+    let activeExamContext = null; 
+    let studentAnswers = {};
+    let examTimerInterval = null;
+    let examTimeRemaining = 0;
 
-    async function fetchInternetTime() {
-      try {
-        const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Phnom_Penh');
-        const data = await res.json();
-        internetTime = new Date(data.datetime);
-      } catch (e) { internetTime = new Date(); }
-      currentMonthName = standardMonths[internetTime.getMonth()]; 
+    // Helper: Get Subject
+    function getSubject(itemObj, teacherId) {
+        if (itemObj.subject && itemObj.subject.trim() !== '') return itemObj.subject.trim();
+        const tProfile = teachersData.find(t => t.uid === teacherId) || {};
+        if (tProfile.subject && tProfile.subject.trim() !== '') return tProfile.subject.trim();
+        return 'ទូទៅ';
+    }
+
+    // Helper: Shuffle Array
+    function shuffleArray(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex > 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
     }
 
     async function initApp() {
-      try {
-          const savedSession = localStorage.getItem('studentSession');
-          if (savedSession) {
-              currentUser = JSON.parse(savedSession);
-              userRole = 'student';
-          } else {
-              window.location.href = 'index.html';
-              return;
-          }
-      } catch(e) { 
-          console.warn(e); 
-          window.location.href = 'index.html';
-          return;
+      const sessionData = localStorage.getItem('studentSession');
+      if (sessionData) {
+        currentUser = JSON.parse(sessionData);
+        try {
+           if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+              await signInWithCustomToken(auth, __initial_auth_token);
+           } else {
+              await signInAnonymously(auth);
+           }
+        } catch(err) { console.error("Auth error", err); }
+      } else {
+        window.location.href = 'index.html'; return;
       }
 
-      renderApp(); 
-      
-      try { await signInAnonymously(auth); } catch (err) { console.error("Auth Error:", err); }
       onAuthStateChanged(auth, (user) => {
-        firebaseUser = user;
-        if (user) loadFirestoreData();
+        if (user) { firebaseUser = user; loadFirestoreData(); }
       });
     }
 
     function loadFirestoreData() {
       if (!firebaseUser) return;
       const qCollection = collection(db, 'artifacts', appId, 'public', 'data', 'questions');
-      onSnapshot(query(qCollection), (snapshot) => { questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); if (userRole) renderApp(); });
+      onSnapshot(query(qCollection), (snapshot) => { questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderApp(); }, (err) => console.error(err));
 
       const rCollection = collection(db, 'artifacts', appId, 'public', 'data', 'results');
-      onSnapshot(query(rCollection), (snapshot) => { results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); if (userRole) renderApp(); });
-
-      const sCollection = collection(db, 'artifacts', appId, 'public', 'data', 'students');
-      onSnapshot(query(sCollection), (snapshot) => { studentsData = snapshot.docs.map(doc => doc.data()); loadingData = false; renderApp(); });
+      onSnapshot(query(rCollection), (snapshot) => { results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderApp(); }, (err) => console.error(err));
 
       const tCollection = collection(db, 'artifacts', appId, 'public', 'data', 'teachers');
-      onSnapshot(query(tCollection), (snapshot) => { teachersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })); if (userRole) renderApp(); });
+      onSnapshot(query(tCollection), (snapshot) => { teachersData = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })); renderApp(); }, (err) => console.error(err));
+      
+      const settingsDoc = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'global');
+      onSnapshot(settingsDoc, (docSnap) => {
+        if (docSnap.exists()) {
+            globalSettings = { ...globalSettings, ...docSnap.data() };
+            const cardBg = document.getElementById('cardBgImage'); if (cardBg) cardBg.src = globalSettings.cardBgUrl || 'https://i.imgur.com/s46369v.png';
+            const cardSeal = document.getElementById('cardSealImage'); if (cardSeal) { cardSeal.src = globalSettings.sealImageUrl || ''; cardSeal.style.display = globalSettings.sealImageUrl ? 'block' : 'none'; }
+        }
+      }, (err) => console.error(err));
+
+      setTimeout(() => { loadingData = false; renderApp(); }, 500);
     }
 
-    const renderMath = () => {
-        document.querySelectorAll('.ql-formula').forEach(f => {
-            const tex = f.getAttribute('data-value');
-            if(tex) try { katex.render(tex, f, { throwOnError: false }); } catch(e){}
-        });
-    };
+    window.logout = () => { localStorage.removeItem('studentSession'); signOut(auth).then(() => { window.location.href = 'index.html'; }); };
 
     window.togglePassword = (inputId, iconEl) => {
         const input = document.getElementById(inputId);
-        if(input.type === 'password') { input.type = 'text'; iconEl.classList.replace('fa-eye', 'fa-eye-slash'); iconEl.classList.add('text-blue-500'); } 
-        else { input.type = 'password'; iconEl.classList.replace('fa-eye-slash', 'fa-eye'); iconEl.classList.remove('text-blue-500'); }
+        if(input.type === 'password') { input.type = 'text'; iconEl.classList.remove('fa-eye'); iconEl.classList.add('fa-eye-slash', 'text-blue-500'); } 
+        else { input.type = 'password'; iconEl.classList.remove('fa-eye-slash', 'text-blue-500'); iconEl.classList.add('fa-eye'); }
     };
 
-    window.logout = () => {
-      if (timerInterval) clearInterval(timerInterval); 
-      userRole = null; currentUser = null; 
-      try { localStorage.removeItem('studentSession'); } catch(e){}
-      window.location.href = 'index.html';
-    };
-
-    function updateTimerUI() {
-      const m = Math.floor(timeLeft / 60).toString().padStart(2, '0'), s = (timeLeft % 60).toString().padStart(2, '0'), el = document.getElementById('quiz-timer');
-      if (el) { el.innerHTML = `<i class="fas fa-clock"></i> ម៉ោងនៅសល់: ${m}:${s}`; if (timeLeft < 300) el.classList.add('animate-pulse', 'bg-red-700'); }
-    }
-
-    function startTimerCountdown() {
-      if (timerInterval) clearInterval(timerInterval);
-      updateTimerUI(); 
-      timerInterval = setInterval(() => {
-        timeLeft--; updateTimerUI();
-        if (timeLeft <= 0) { clearInterval(timerInterval); window.customAlert("ម៉ោងប្រឡងបានបញ្ចប់!", () => { window.executeSubmitQuiz(true); }); }
-      }, 1000);
-    }
-
-    window.setStudentTab = (tab) => { studentTab = tab; renderApp(); };
-
-    window.startExam = async (tId, month, isLesson = false) => {
-      selectedTeacherId = tId; selectedMonth = month; currentQuizIsLesson = isLesson;
-
-      if (!isLesson) {
-          const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === month && (r.teacherId === tId || (!r.teacherId && tId === 'legacy')) && !r.isLesson);
-          if (hasTaken) { quizStarted = false; renderApp(); return; }
-      }
-
-      let validQuestions = questions.filter(q => {
-        const qClasses = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
-        const matchTeacher = q.teacherId === tId || (tId === 'legacy' && !q.teacherId);
-        return qClasses.includes(String(currentUser.CLASS)) && q.month === selectedMonth && q.status === 'online' && matchTeacher && (isLesson ? q.type === 'lesson' : q.type !== 'lesson');
-      });
-
-      if (validQuestions.length === 0) { window.customAlert(isLesson ? 'មិនមានមេរៀនទេ!' : 'មិនមានសំណួរសម្រាប់វិញ្ញាសានេះទេ!'); return; }
-
-      if (isLesson) {
-         availableQuestions = [...validQuestions].sort((a, b) => (a.displayMode === 'random' && b.displayMode === 'random') ? Math.random() - 0.5 : 0);
-         quizStarted = true; quizSubmitted = false; renderApp();
-         setTimeout(renderMath, 100);
-         return; 
-      }
-      
-      const questionSessionKey = `quiz_questions_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`, optionSessionKey = `quiz_options_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`;
-      let savedQuestionIds = localStorage.getItem(questionSessionKey);
-      
-      if (savedQuestionIds) {
-        availableQuestions = JSON.parse(savedQuestionIds).map(id => validQuestions.find(q => q.id === id)).filter(Boolean);
-        if (availableQuestions.length === 0) savedQuestionIds = null; 
-        const savedOrderMap = localStorage.getItem(optionSessionKey);
-        if(savedOrderMap) {
-            const parsedOrderMap = JSON.parse(savedOrderMap);
-            availableQuestions.forEach(q => { if(q.type && q.type.includes('multiple_choice') && q.options && parsedOrderMap[q.id]) { q.originalOrder = parsedOrderMap[q.id]; q.shuffledOptions = parsedOrderMap[q.id].map(idx => q.options[idx]); } });
-        }
-      }
-      
-      if (!savedQuestionIds) {
-        let fixedQs = validQuestions.filter(q => q.displayMode === 'fixed' || !q.displayMode), randomQs = validQuestions.filter(q => q.displayMode === 'random').sort(() => Math.random() - 0.5);
-        let selectedQs = [], orderMap = {};
-        for (const q of fixedQs) { selectedQs.push(q); }
-        for (const q of randomQs) { selectedQs.push(q); }
-        selectedQs.sort(() => Math.random() - 0.5);
-        for (const q of selectedQs) {
-            if (q.type && q.type.includes('multiple_choice') && q.options) {
-                let order = q.options.map((_, i) => i);
-                for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
-                orderMap[q.id] = order; q.originalOrder = order; q.shuffledOptions = order.map(idx => q.options[idx]);
-            }
-        }
-        availableQuestions = selectedQs;
-        if (availableQuestions.filter(q => q.type !== 'lesson').length === 0) { window.customAlert('សំណួរមានបញ្ហា!'); return; }
-        localStorage.setItem(questionSessionKey, JSON.stringify(selectedQs.map(q => q.id))); localStorage.setItem(optionSessionKey, JSON.stringify(orderMap));
-      }
-
-      await fetchInternetTime();
-      const sessionKey = `quiz_time_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`;
-      let savedStartTime = localStorage.getItem(sessionKey);
-      if (!savedStartTime) { savedStartTime = internetTime.getTime(); localStorage.setItem(sessionKey, savedStartTime); }
-
-      let tDurationMinutes = 60; 
-      if (selectedTeacherId !== 'legacy') {
-          const tDoc = teachersData.find(t => t.uid === selectedTeacherId);
-          if (tDoc && tDoc.examDurations && tDoc.examDurations[selectedMonth]) tDurationMinutes = Number(tDoc.examDurations[selectedMonth]);
-      }
-      currentQuizDuration = tDurationMinutes * 60;
-      quizStartTimestamp = parseInt(savedStartTime);
-      timeLeft = Math.max(0, currentQuizDuration - Math.floor((internetTime.getTime() - quizStartTimestamp) / 1000));
-
-      if (timeLeft <= 0) { window.customAlert("ម៉ោងប្រឡងផុតកំណត់ហើយ!", () => { window.executeSubmitQuiz(true); }); return; }
-
-      quizStarted = true; quizSubmitted = false;
-      const savedAns = localStorage.getItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`);
-      currentAnswers = savedAns ? JSON.parse(savedAns) : {};
-      renderApp(); startTimerCountdown();
-      setTimeout(renderMath, 100);
-    };
-
-    window.selectAnswer = (qId, val) => {
-      currentAnswers[qId] = val; localStorage.setItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`, JSON.stringify(currentAnswers));
-      if(typeof val === 'number' || (typeof val === 'string' && val !== '')) {
-        document.querySelectorAll(`.opt-container-${qId}`).forEach(el => el.classList.remove('option-checked', 'bg-blue-100', 'border-blue-500'));
-        const selEl = document.getElementById(`lbl-${qId}-${val}`); if(selEl) selEl.classList.add('option-checked', 'bg-blue-100', 'border-blue-500');
-      }
-    };
-
-    window.selectAnswerMulti = (qId, val, isChecked) => {
-      if (!currentAnswers[qId]) currentAnswers[qId] = [];
-      if (isChecked) { if (!currentAnswers[qId].includes(val)) currentAnswers[qId].push(val); } else { currentAnswers[qId] = currentAnswers[qId].filter(v => v !== val); }
-      localStorage.setItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`, JSON.stringify(currentAnswers));
-      const selEl = document.getElementById(`lbl-${qId}-${val}`);
-      if(selEl) { if(isChecked) selEl.classList.add('option-checked', 'bg-blue-100', 'border-blue-500'); else selEl.classList.remove('option-checked', 'bg-blue-100', 'border-blue-500'); }
-    };
-
-    window.submitQuiz = async (isAutoSubmit = false) => {
-      const unanswered = availableQuestions.some(q => {
-        if (q.type === 'lesson') return false;
-        if (currentAnswers[q.id] === undefined || currentAnswers[q.id] === null) return true;
-        if (q.type === 'essay' && String(currentAnswers[q.id]).trim() === '') return true;
-        if (q.type === 'multiple_choice_multi' && (!Array.isArray(currentAnswers[q.id]) || currentAnswers[q.id].length === 0)) return true;
-        return false;
-      });
-      if (!isAutoSubmit && unanswered && !currentQuizIsLesson) { window.customConfirm('អ្នកមិនទាន់ឆ្លើយគ្រប់សំណួរទេ។ តើចង់បញ្ជូនឬទេ?', () => { window.executeSubmitQuiz(true); }); return; }
-      window.executeSubmitQuiz(isAutoSubmit);
-    };
-
-    window.executeSubmitQuiz = async (isAutoSubmit = false) => {
-      if (timerInterval) clearInterval(timerInterval);
-      let gotScore = 0, totalPts = 0, hasEssay = false, questionScores = {}, originalAnswers = {};
-
-      availableQuestions.forEach(q => {
-        if (q.type === 'lesson') return;
-        totalPts += Number(q.points);
-        if (q.type === 'essay') {
-          hasEssay = true; questionScores[q.id] = 0; originalAnswers[q.id] = currentAnswers[q.id] || '';
-        } else if (q.type === 'multiple_choice_multi') {
-          let studentArr = currentAnswers[q.id] || [], originalAnswerIndices = studentArr.map(v => q.originalOrder ? q.originalOrder[Number(v)] : Number(v));
-          originalAnswers[q.id] = originalAnswerIndices;
-          let realCorrectAnswers = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
-          if (originalAnswerIndices.length === realCorrectAnswers.length && originalAnswerIndices.every(val => realCorrectAnswers.includes(val))) { gotScore += Number(q.points); questionScores[q.id] = Number(q.points); } else { questionScores[q.id] = 0; }
-        } else {
-          let studentShuffledAnswer = currentAnswers[q.id], originalAnswerIndex = null;
-          if (studentShuffledAnswer !== undefined && studentShuffledAnswer !== null && studentShuffledAnswer !== '') { originalAnswerIndex = q.originalOrder ? q.originalOrder[Number(studentShuffledAnswer)] : Number(studentShuffledAnswer); }
-          originalAnswers[q.id] = originalAnswerIndex;
-          if (originalAnswerIndex == q.correctAnswer) { gotScore += Number(q.points); questionScores[q.id] = Number(q.points); } else { questionScores[q.id] = 0; }
-        }
-      });
-
-      currentScore = { got: gotScore, total: totalPts, needsGrading: hasEssay };
-      let tSubj = 'ទូទៅ'; if (selectedTeacherId !== 'legacy') { const tDoc = teachersData.find(t => t.uid === selectedTeacherId); if (tDoc) tSubj = tDoc.subject || tSubj; }
-
-      try {
-        const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), { studentId: currentUser.ID, studentName: `${currentUser.FNAME} ${currentUser.LNAME}`, classLevel: currentUser.CLASS, teacherId: selectedTeacherId, subject: tSubj, month: selectedMonth, score: gotScore, totalPoints: totalPts, answers: originalAnswers, questionScores: questionScores, needsGrading: hasEssay, isLesson: currentQuizIsLesson, timestamp: serverTimestamp() });
-        lastResultId = docRef.id;
-        localStorage.removeItem(`quiz_answers_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_time_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_questions_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); localStorage.removeItem(`quiz_options_${currentUser.ID}_${selectedTeacherId}_${selectedMonth}`); 
-        quizSubmitted = true; quizStarted = false; renderApp();
-      } catch (err) { window.customAlert("មានបញ្ហាក្នុងការរក្សាទុក។"); }
-    };
-
-    window.pauseQuiz = () => { quizStarted = false; if (timerInterval) clearInterval(timerInterval); renderApp(); };
-    window.resetQuizState = () => { 
-        quizSubmitted = false; quizStarted = false; selectedMonth = ''; selectedTeacherId = ''; 
-        currentQuizIsLesson = false; viewingResultId = null; lastResultId = null; renderApp(); 
-    };
-
-    window.viewResult = (id) => { viewingResultId = id; quizSubmitted = false; quizStarted = false; renderApp(); setTimeout(renderMath, 100); };
-    window.closeViewResult = () => { viewingResultId = null; renderApp(); };
-
-    window.openChangePassModal = () => { isChangePassModalOpen = true; renderApp(); };
-    window.closeChangePassModal = () => { isChangePassModalOpen = false; renderApp(); };
+    window.openChangePassModal = () => { document.getElementById('newPass').value = ''; document.getElementById('confirmPass').value = ''; document.getElementById('changePassModal').classList.remove('hidden'); document.getElementById('changePassModal').classList.add('flex'); };
+    window.closeChangePassModal = () => { document.getElementById('changePassModal').classList.remove('flex'); document.getElementById('changePassModal').classList.add('hidden'); };
     window.saveNewPassword = async (e) => {
-      e.preventDefault();
-      const oldP = document.getElementById('oldPass').value, newP = document.getElementById('newPass').value, confP = document.getElementById('confirmPass').value;
-      const actualCurrentPass = (currentUser.PASSWORD !== undefined && currentUser.PASSWORD !== null && currentUser.PASSWORD !== '') ? currentUser.PASSWORD : currentUser.YYYY;
-      if(oldP !== actualCurrentPass) { window.customAlert('ពាក្យសម្ងាត់ចាស់មិនត្រឹមត្រូវ!'); return; } if(newP !== confP) { window.customAlert('ពាក្យសម្ងាត់ថ្មី និងបញ្ជាក់មិនផ្ទៀងផ្ទាត់គ្នា!'); return; } if(newP.length < 4) { window.customAlert('ពាក្យសម្ងាត់ថ្មីត្រូវមានយ៉ាងហោច ៤ ខ្ទង់!'); return; }
-      const btn = e.target.querySelector('button[type="submit"]'); const originalText = btn.innerHTML; btn.innerHTML = 'កំពុងរក្សាទុក...'; btn.disabled = true;
-      try {
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUser.ID), { PASSWORD: newP, updatedAt: serverTimestamp() });
-        window.customAlert('ប្តូរពាក្យសម្ងាត់ជោគជ័យ!', () => { window.closeChangePassModal(); }); currentUser.PASSWORD = newP; localStorage.setItem('studentSession', JSON.stringify(currentUser));
-      } catch(err) { window.customAlert('មានបញ្ហា។'); btn.innerHTML = originalText; btn.disabled = false; }
+        e.preventDefault();
+        const newP = document.getElementById('newPass').value, confP = document.getElementById('confirmPass').value;
+        if(newP !== confP) { window.customAlert('ពាក្យសម្ងាត់មិនផ្ទៀងផ្ទាត់គ្នាទេ!'); return; }
+        const btn = e.target.querySelector('button[type="submit"]'); const originalText = btn.innerHTML; btn.innerHTML = 'កំពុងរក្សាទុក...'; btn.disabled = true;
+        try {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'students', currentUser.ID), { PASSWORD: newP.trim(), updatedAt: serverTimestamp() });
+            currentUser.PASSWORD = newP.trim(); localStorage.setItem('studentSession', JSON.stringify(currentUser));
+            window.customAlert('ប្តូរពាក្យសម្ងាត់បានជោគជ័យ!', () => { window.closeChangePassModal(); });
+        } catch(err) { window.customAlert('មានបញ្ហាក្នុងការរក្សាទុក!'); } finally { btn.innerHTML = originalText; btn.disabled = false; }
     };
 
+    window.openCardModal = () => {
+        if (!currentUser) return;
+        document.getElementById('cardName').innerText = `${currentUser.FNAME || ''} ${currentUser.LNAME || ''}`;
+        document.getElementById('cardId').innerText = `ID: ${currentUser.ID || ''}`;
+        document.getElementById('cardGen').innerText = currentUser.GEN || 'N/A';
+        document.getElementById('cardClass').innerText = currentUser.CLASS || 'N/A';
+        document.getElementById('cardYYYY').innerText = currentUser.YYYY || 'N/A';
+        document.getElementById('cardYear').innerText = currentUser.YEAR || '2023-2024';
+        
+        const photoEl = document.getElementById('cardPhoto');
+        photoEl.src = currentUser.PhotoURL ? currentUser.PhotoURL.split(',')[0].trim() : fallbackImg;
+        photoEl.onerror = function() { this.onerror=null; this.src=fallbackImg; };
+
+        const qrContainer = document.getElementById('cardQRCode'); qrContainer.innerHTML = '';
+        new QRCode(qrContainer, { text: currentUser.ID || 'N/A', width: 64, height: 64, colorDark: "#1e3a8a", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+        document.getElementById('studentCardModal').classList.remove('hidden'); document.getElementById('studentCardModal').classList.add('flex');
+    };
+    window.closeCardModal = () => { document.getElementById('studentCardModal').classList.add('hidden'); document.getElementById('studentCardModal').classList.remove('flex'); };
+    window.downloadCard = () => {
+        const printArea = document.getElementById('card-print-area');
+        const btn = document.querySelector('#studentCardModal button[onclick="window.downloadCard()"]'); const origHtml = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> កំពុងដំណើរការ...'; btn.disabled = true;
+        html2canvas(printArea, { scale: 3, useCORS: true, backgroundColor: null, logging: false }).then(canvas => {
+            const link = document.createElement('a'); link.download = `StudentCard_${currentUser.ID}.png`; link.href = canvas.toDataURL('image/png'); link.click();
+            btn.innerHTML = origHtml; btn.disabled = false;
+        }).catch(err => { window.customAlert("មានបញ្ហាក្នុងការថតកាត។"); btn.innerHTML = origHtml; btn.disabled = false; });
+    };
+
+    // Switch Dashboard View
+    window.setDashboardView = (view) => {
+        activeDashboardView = view;
+        renderApp();
+    };
+
+    // --- Logic ប្រព័ន្ធប្រឡង (Cloud Timer) ---
+    window.startExam = async (examKeyStr) => {
+        // បង្ហាញផ្ទាំង Loading ពេលកំពុងទាញទិន្នន័យពី Cloud
+        document.getElementById('app-container').innerHTML = `
+           <div class="flex flex-col items-center justify-center h-[60vh]">
+              <div class="loader mb-4 border-blue-200 border-top-blue-600"></div>
+              <p class="text-blue-600 font-bold text-lg">កំពុងរៀបចំវិញ្ញាសា និងទាញយកទិន្នន័យពី Cloud...</p>
+           </div>`;
+
+        const decodedStr = decodeURIComponent(examKeyStr);
+        const parts = decodedStr.split('_|MATCH|_'); 
+        const teacherId = parts[0];
+        const month = parts[1];
+        const subject = parts[2];
+        const isLessonFlag = parts[3] === 'true';
+        
+        const myClassStr = String(currentUser.CLASS).trim();
+        let examQuestions = questions.filter(q => {
+             const classList = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
+             const isMatchClass = classList.some(c => c.trim() === myClassStr);
+             const subj = getSubject(q, q.teacherId);
+             const qIsLesson = q.type === 'lesson';
+             
+             return q.teacherId === teacherId && q.month === month && subj === subject && qIsLesson === isLessonFlag && isMatchClass && q.status === 'online';
+        });
+
+        if (examQuestions.length === 0) { 
+            window.customAlert("វិញ្ញាសានេះត្រូវបានបិទ ឬមិនមានសំណួរទេ!", () => { renderApp(); }); 
+            return; 
+        }
+
+        // ផ្ទៀងផ្ទាត់សុពលភាពខែ (Month Expiry Check)
+        const standardMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+        const currentMonthName = standardMonths[new Date().getMonth()];
+        let isExpired = false;
+        if (standardMonths.includes(month) && month !== currentMonthName) {
+            isExpired = true;
+        }
+
+        if (!isLessonFlag && isExpired) {
+            window.customAlert("កិច្ចការនេះបានផុតសុពលភាពហើយ (ខុសខែប្រឡង)!", () => { renderApp(); }); 
+            return;
+        }
+
+        const teacherProfile = teachersData.find(t => t.uid === teacherId) || {};
+        
+        // ឆែកមើលថាតើធ្លាប់បញ្ជូនរួចហើយឬនៅ?
+        const existingRes = results.find(r => {
+             const rSubj = getSubject(r, teacherId);
+             return r.studentId === currentUser.ID && r.teacherId === teacherId && r.month === month && rSubj === subject && (isLessonFlag ? r.isLesson : !r.isLesson);
+        });
+
+        if (!isLessonFlag && existingRes) { 
+             window.customAlert("អ្នកបានបញ្ជូនចម្លើយរួចរាល់ហើយ។ មិនអាចចូលប្រឡងបានទៀតទេ!", () => { renderApp(); }); 
+             return; 
+        }
+
+        // ច្របល់សំណួរ និង ចម្លើយ
+        let randomizedQuestions = [...examQuestions];
+        const hasRandomQuestions = randomizedQuestions.some(q => q.displayMode === 'random');
+        
+        if (hasRandomQuestions && !isLessonFlag) {
+            let fixedQs = [], randomQs = [];
+            randomizedQuestions.forEach(q => { if(q.displayMode === 'fixed') fixedQs.push(q); else randomQs.push(q); });
+            randomQs = shuffleArray(randomQs);
+            let finalQs = []; let rIdx = 0;
+            randomizedQuestions.forEach(q => { if(q.displayMode === 'fixed') finalQs.push(q); else { finalQs.push(randomQs[rIdx]); rIdx++; } });
+            randomizedQuestions = finalQs;
+        }
+
+        if (!isLessonFlag) {
+            randomizedQuestions = randomizedQuestions.map(q => {
+                if(q.type.includes('multiple_choice') && q.options && q.options.length > 0) {
+                    let optsWithIndex = q.options.map((opt, i) => ({ text: opt, originalIndex: i }));
+                    optsWithIndex = shuffleArray(optsWithIndex);
+                    let newOptions = [], newCorrectAnswer = null;
+                    optsWithIndex.forEach((item, newIdx) => {
+                        newOptions.push(item.text);
+                        if (q.type === 'multiple_choice_single') { if (q.correctAnswer === item.originalIndex) newCorrectAnswer = newIdx; } 
+                        else if (q.type === 'multiple_choice_multi') { if (!newCorrectAnswer) newCorrectAnswer = []; if (q.correctAnswer && q.correctAnswer.includes(item.originalIndex)) newCorrectAnswer.push(newIdx); }
+                    });
+                    return { ...q, options: newOptions, correctAnswer: newCorrectAnswer, originalOptionsOrder: optsWithIndex };
+                }
+                return q;
+            });
+        } else {
+            // តម្រៀបមេរៀនតាមលំដាប់ពេលបង្កើត
+            randomizedQuestions.sort((a, b) => {
+                const timeA = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : 0;
+                const timeB = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : 0;
+                return timeA - timeB; // ពីចាស់ទៅថ្មី ដើម្បីឲ្យមេរៀនទី១ នៅលើគេ
+            });
+        }
+
+        activeExamQuestions = randomizedQuestions;
+        activeExamContext = { 
+            teacherId, teacherName: teacherProfile.name || '', 
+            subject: subject, month, 
+            isLesson: isLessonFlag,
+            canSubmitLesson: isLessonFlag && !existingRes && !isExpired
+        };
+
+        // --- ប្រព័ន្ធ Cloud Session Timer & Cloud Sync Answers ---
+        if (!isLessonFlag) {
+            let durationMinutes = 60;
+            if (teacherProfile.examDurations && teacherProfile.examDurations[month]) {
+                durationMinutes = Number(teacherProfile.examDurations[month]);
+            }
+
+            const sessionDocId = `${currentUser.ID}_${teacherId}_${month}_${encodeURIComponent(subject)}`;
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'exam_sessions', sessionDocId);
+
+            let sessionData = null;
+            try {
+                const sessionSnap = await getDoc(sessionRef);
+                if (sessionSnap.exists()) {
+                    sessionData = sessionSnap.data();
+                }
+            } catch(e) { console.error("Error fetching cloud session", e); }
+
+            let now = Date.now();
+
+            if (sessionData && sessionData.endTime) {
+                // Resume session (ទាញចម្លើយ និងម៉ោងពី Cloud)
+                if (sessionData.answers) {
+                    studentAnswers = sessionData.answers;
+                } else {
+                    studentAnswers = {};
+                }
+            } else {
+                // New session
+                sessionData = {
+                    startTime: now,
+                    endTime: now + durationMinutes * 60 * 1000,
+                    answers: {}
+                };
+                try {
+                    await setDoc(sessionRef, sessionData);
+                } catch(e) { console.error("Error creating cloud session", e); }
+                studentAnswers = {};
+            }
+
+            examTimeRemaining = Math.floor((sessionData.endTime - now) / 1000);
+
+            if (examTimeRemaining <= 0) {
+                window.customAlert("ម៉ោងប្រឡងរបស់អ្នកបានផុតកំណត់ហើយ! ប្រព័ន្ធនឹងបញ្ជូនចម្លើយដោយស្វ័យប្រវត្តិ។", () => { window.submitExam(); });
+                return;
+            }
+
+            clearInterval(examTimerInterval);
+            examTimerInterval = setInterval(() => {
+                examTimeRemaining--;
+                updateTimerDisplay();
+                
+                if (examTimeRemaining <= 0) { 
+                    clearInterval(examTimerInterval); 
+                    window.customAlert("ម៉ោងប្រឡងរបស់អ្នកបានផុតកំណត់ហើយ! ប្រព័ន្ធនឹងបញ្ជូនចម្លើយដោយស្វ័យប្រវត្តិ។", () => { window.submitExam(); }); 
+                }
+            }, 1000);
+        } else {
+            studentAnswers = {}; // គ្មានចម្លើយសម្រាប់មេរៀន
+        }
+        
+        renderApp();
+        if (!isLessonFlag) updateTimerDisplay();
+    };
+
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('exam-timer');
+        if (!timerEl) return;
+        const m = Math.max(0, Math.floor(examTimeRemaining / 60)); 
+        const s = Math.max(0, examTimeRemaining % 60);
+        timerEl.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        if (examTimeRemaining <= 300) { timerEl.classList.remove('bg-blue-100', 'text-blue-800'); timerEl.classList.add('bg-red-100', 'text-red-600', 'animate-pulse'); }
+    }
+
+    // រក្សាទុកចម្លើយទាំងក្នុង Local និងបាញ់បញ្ជូនទៅ Firestore (Cloud Session Sync)
+    window.saveAnswersToLocal = () => {
+        if(!activeExamContext) return;
+        
+        // Backup ក្នុង Local Storage
+        const answerKey = `exam_ans_${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}_${activeExamContext.isLesson}`;
+        localStorage.setItem(answerKey, JSON.stringify(studentAnswers));
+
+        // Sync បញ្ជូនទៅ Cloud ផ្ទាល់ដើម្បីការពារសិស្សប្តូរឧបករណ៍
+        if (!activeExamContext.isLesson) {
+            const sessionDocId = `${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}`;
+            const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'exam_sessions', sessionDocId);
+            updateDoc(sessionRef, { answers: studentAnswers }).catch(e => console.error("Cloud Sync Error", e));
+        }
+    };
+
+    window.selectOptionUI = (qId, optIndex, qType) => {
+        if(qType === 'multiple_choice_multi') {
+            if(!studentAnswers[qId]) studentAnswers[qId] = [];
+            const idx = studentAnswers[qId].indexOf(optIndex);
+            if(idx > -1) studentAnswers[qId].splice(idx, 1); else studentAnswers[qId].push(optIndex);
+        } else {
+            studentAnswers[qId] = optIndex;
+        }
+        window.saveAnswersToLocal();
+        
+        const container = document.getElementById(`q-options-${qId}`);
+        if(container) {
+            const buttons = container.querySelectorAll('button.opt-btn');
+            buttons.forEach((btn, idx) => {
+                let isSelected = qType === 'multiple_choice_multi' ? (studentAnswers[qId] && studentAnswers[qId].includes(idx)) : studentAnswers[qId] === idx;
+                if(isSelected) {
+                    btn.className = "opt-btn w-full text-left p-4 sm:p-5 border-2 rounded-2xl transition flex items-start gap-4 text-base sm:text-lg cursor-pointer shadow-sm relative overflow-hidden group bg-blue-50 border-blue-500 text-blue-900";
+                    const iconBox = btn.querySelector('.icon-box');
+                    iconBox.className = qType === 'multiple_choice_multi' ? "icon-box w-6 h-6 rounded border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center shrink-0 mt-0.5" : "icon-box w-6 h-6 rounded-full border-8 border-blue-500 shrink-0 mt-0.5 bg-white";
+                    iconBox.innerHTML = qType === 'multiple_choice_multi' ? '<i class="fas fa-check text-sm"></i>' : '';
+                } else {
+                    btn.className = "opt-btn w-full text-left p-4 sm:p-5 border-2 rounded-2xl transition flex items-start gap-4 text-base sm:text-lg cursor-pointer shadow-sm relative overflow-hidden group bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-gray-50";
+                    const iconBox = btn.querySelector('.icon-box');
+                    iconBox.className = qType === 'multiple_choice_multi' ? "icon-box w-6 h-6 rounded border-2 border-gray-300 shrink-0 mt-0.5 group-hover:border-blue-300 transition" : "icon-box w-6 h-6 rounded-full border-2 border-gray-300 shrink-0 mt-0.5 group-hover:border-blue-300 transition";
+                    iconBox.innerHTML = '';
+                }
+            });
+        }
+    };
+
+    window.saveEssayAnswerUI = (qId, val) => {
+        studentAnswers[qId] = val;
+        window.saveAnswersToLocal();
+    };
+
+    window.confirmSubmitExam = () => {
+        let unanswered = 0;
+        activeExamQuestions.forEach(q => { if(q.type !== 'lesson') { if (studentAnswers[q.id] === undefined || studentAnswers[q.id] === null || studentAnswers[q.id] === '' || (Array.isArray(studentAnswers[q.id]) && studentAnswers[q.id].length === 0)) unanswered++; } });
+        const msg = unanswered > 0 ? `អ្នកនៅសល់ ${unanswered} សំណួរមិនទាន់ឆ្លើយ។ តើអ្នកពិតជាចង់បញ្ជូនចម្លើយមែនទេ?` : "តើអ្នកពិតជាចង់បញ្ជូនចម្លើយមែនទេ?";
+        window.customConfirm(msg, () => { window.submitExam(); });
+    };
+
+    window.submitLessonRead = async () => {
+        const btn = document.getElementById('btnSubmitLesson'); if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> កំពុងកត់ត្រា...'; btn.disabled = true; }
+        try {
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), { 
+                studentId: currentUser.ID, 
+                studentName: `${currentUser.FNAME} ${currentUser.LNAME}`, 
+                classLevel: currentUser.CLASS, 
+                teacherId: activeExamContext.teacherId, 
+                subject: activeExamContext.subject, 
+                month: activeExamContext.month, 
+                isLesson: true,
+                timestamp: serverTimestamp() 
+            });
+            window.customAlert("អ្នកបានបញ្ចប់ការអានមេរៀននេះដោយជោគជ័យ!", () => { window.exitExam(); });
+        } catch(e) { window.customAlert("មានបញ្ហាក្នុងការកត់ត្រា។"); if(btn){ btn.disabled = false; btn.innerHTML='<i class="fas fa-check-circle"></i> បញ្ចប់ការអាន';} }
+    };
+
+    window.submitExam = async () => {
+        clearInterval(examTimerInterval);
+        const btn1 = document.getElementById('btnSubmitExamFinal'); if(btn1) { btn1.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងបញ្ជូន...'; btn1.disabled = true; }
+        const btn2 = document.getElementById('btnSubmitExamFinalBottom'); if(btn2) { btn2.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងបញ្ជូន...'; btn2.disabled = true; }
+        
+        let totalScore = 0; let totalPoints = 0; let needsGrading = false; let qScores = {};
+        
+        activeExamQuestions.forEach(q => {
+            if (q.type === 'lesson') return;
+            totalPoints += (q.points || 0);
+            const ans = studentAnswers[q.id];
+            
+            if (q.type === 'essay') {
+                needsGrading = true; qScores[q.id] = 0;
+            } else if (q.type === 'multiple_choice_single') {
+                if (ans !== undefined && ans === q.correctAnswer) { totalScore += (q.points || 0); qScores[q.id] = (q.points || 0); } else { qScores[q.id] = 0; }
+            } else if (q.type === 'multiple_choice_multi') {
+                const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
+                const ansArr = Array.isArray(ans) ? ans : [];
+                const isCorrect = correctArr.length === ansArr.length && correctArr.every(val => ansArr.includes(val));
+                if (isCorrect) { totalScore += (q.points || 0); qScores[q.id] = (q.points || 0); } else { qScores[q.id] = 0; }
+            }
+        });
+
+        const examData = {
+            studentId: currentUser.ID,
+            studentName: `${currentUser.FNAME} ${currentUser.LNAME}`,
+            classLevel: currentUser.CLASS,
+            teacherId: activeExamContext.teacherId,
+            teacherName: activeExamContext.teacherName,
+            subject: activeExamContext.subject,
+            month: activeExamContext.month,
+            isLesson: false,
+            score: totalScore,
+            totalPoints: totalPoints,
+            answers: studentAnswers,
+            questionScores: qScores,
+            needsGrading: needsGrading,
+            timestamp: serverTimestamp()
+        };
+
+        try {
+            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), examData);
+            
+            // លុបទិន្នន័យបណ្តោះអាសន្នចេញពីម៉ាស៊ីន
+            const answerKey = `exam_ans_${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}_${activeExamContext.isLesson}`;
+            const timerKey = `exam_state_${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}_${activeExamContext.isLesson}`;
+            localStorage.removeItem(answerKey);
+            localStorage.removeItem(timerKey);
+            
+            window.customAlert("បញ្ជូនចម្លើយបានជោគជ័យ! ការប្រឡងត្រូវបានបញ្ចប់ដោយបរិបូរណ៍។", () => { window.exitExam(); });
+        } catch (error) {
+            window.customAlert("មានបញ្ហាក្នុងការបញ្ជូនចម្លើយ។ សូមព្យាយាមម្តងទៀត។");
+            if(btn1) { btn1.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> បញ្ជូនចម្លើយ'; btn1.disabled = false; }
+            if(btn2) { btn2.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> បញ្ជូនចម្លើយ'; btn2.disabled = false; }
+        }
+    };
+
+    window.exitExam = () => { activeExamQuestions = null; activeExamContext = null; clearInterval(examTimerInterval); renderApp(); };
+
+    // --- Render Functions ---
     function renderHeader() {
       const container = document.getElementById('header-container');
-      if (!userRole) { container.innerHTML = ''; return; }
+      if (!currentUser) { container.innerHTML = ''; return; }
+      
+      const avatarSrc = currentUser.PhotoURL ? currentUser.PhotoURL.split(',')[0].trim() : fallbackAvatar;
+      
       container.innerHTML = `
-        <header class="bg-white shadow-sm sticky top-0 z-10 border-b border-blue-100">
+        <header class="bg-blue-700 text-white shadow-md sticky top-0 z-40">
           <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex justify-between items-center">
-            <h1 class="text-lg sm:text-xl text-blue-700 flex items-center gap-2 font-moul">
-              <i class="fas fa-graduation-cap text-2xl"></i> <span class="hidden sm:inline">ប្រព័ន្ធប្រឡងអនឡាញ វិទ្យាល័យកូប</span><span class="sm:hidden">ប្រព័ន្ធសិស្ស</span>
-            </h1>
-            <button onclick="window.logout()" class="flex items-center gap-2 text-red-500 hover:text-red-700 font-semibold bg-red-50 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base">
-              <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">ចាកចេញ</span>
-            </button>
+            <div class="flex items-center gap-3">
+               <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-blue-700 text-xl font-bold shadow-sm overflow-hidden cursor-pointer" onclick="window.openCardModal()">
+                  <img src="${avatarSrc}" onerror="this.onerror=null; this.src='${fallbackAvatar}'" class="w-full h-full object-cover">
+               </div>
+               <div>
+                  <h1 class="text-base sm:text-lg font-moul truncate leading-tight">${currentUser.FNAME} ${currentUser.LNAME}</h1>
+                  <span class="text-xs bg-blue-800 px-2 py-0.5 rounded-full font-semibold border border-blue-600 shadow-inner">ថ្នាក់ទី ${currentUser.CLASS}</span>
+               </div>
+            </div>
+            <div class="flex items-center gap-2">
+               <button onclick="window.openChangePassModal()" class="w-9 h-9 flex items-center justify-center rounded-full bg-blue-600 hover:bg-blue-500 transition shadow-sm border border-blue-500" title="ប្តូរពាក្យសម្ងាត់"><i class="fas fa-key text-sm"></i></button>
+               <button onclick="window.logout()" class="w-9 h-9 flex items-center justify-center rounded-full bg-red-500 hover:bg-red-400 transition shadow-sm border border-red-400" title="ចាកចេញ"><i class="fas fa-sign-out-alt text-sm"></i></button>
+            </div>
           </div>
         </header>
       `;
     }
 
     function renderStudent() {
-      let examsMap = {}, lessonsMap = {};
-      questions.forEach(q => {
-        const qClasses = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
-        if (qClasses.includes(String(currentUser.CLASS)) && q.status === 'online') {
-            const tId = q.teacherId || 'legacy', key = `${tId}_${q.month}`;
-            let targetMap = q.type === 'lesson' ? lessonsMap : examsMap;
-            if (!targetMap[key]) {
-                let tName = 'លោកគ្រូ/អ្នកគ្រូ', tSubj = 'ទូទៅ', tPhoto = '';
-                if (tId !== 'legacy') { const tDoc = teachersData.find(t => t.uid === tId); if (tDoc) { tName = tDoc.name || tName; tSubj = tDoc.subject || tSubj; tPhoto = tDoc.photoURL || ''; } }
-                targetMap[key] = { teacherId: tId, month: q.month, teacherName: tName, subject: tSubj, teacherPhoto: tPhoto, count: 0 };
-            }
-            targetMap[key].count++;
-        }
-      });
-      const availableExams = Object.values(examsMap), availableLessons = Object.values(lessonsMap);
-      let contentHtml = '';
-      const existingResult = (selectedTeacherId && selectedMonth) ? results.find(r => r.studentId === currentUser.ID && r.month === selectedMonth && (r.teacherId === selectedTeacherId || (!r.teacherId && selectedTeacherId === 'legacy')) && (currentQuizIsLesson ? r.isLesson : !r.isLesson)) : null;
-
-      if (viewingResultId) {
-        const res = results.find(r => r.id === viewingResultId);
-        if (!res) { viewingResultId = null; return renderStudent(); }
-        const examQuestions = questions.filter(q => res.answers && res.answers.hasOwnProperty(q.id) && q.type !== 'lesson');
-
-        contentHtml = `
-          <div class="space-y-6 relative">
-            <div class="flex justify-start mb-2"><button onclick="window.closeViewResult()" class="flex items-center gap-2 text-blue-700 hover:text-blue-900 font-bold bg-blue-50 hover:bg-blue-100 px-5 py-2.5 rounded-xl border border-blue-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅក្រោយ</button></div>
-            
-            <div class="bg-gray-50 border border-gray-200 p-6 rounded-xl text-center shadow-sm">
-              <h3 class="text-xl font-bold text-gray-800 mb-4">លទ្ធផល: ${res.subject} (ខែ${res.month})</h3>
-              ${res.needsGrading ? 
-                  `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-6 py-2 rounded-full border border-yellow-200">រង់ចាំគ្រូកែ</span>` 
-                  : `<span class="font-extrabold text-blue-600 text-4xl">${res.score} / ${res.totalPoints} <span class="text-lg text-gray-500 font-medium">ពិន្ទុ</span></span>`}
-            </div>
-
-            <div class="space-y-6 mt-4">
-                ${examQuestions.map((q, i) => {
-                  const sAnswer = res.answers ? res.answers[q.id] : null;
-                  const qScore = res.questionScores ? (res.questionScores[q.id] || 0) : 0;
-                  const isCorrect = qScore > 0 && qScore == q.points;
-                  const isPending = q.type === 'essay' && res.needsGrading;
-                  
-                  let headerClass = isPending ? 'bg-yellow-50 border-yellow-200 text-yellow-800' : (isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800');
-                  let borderClass = isPending ? 'border-yellow-200' : (isCorrect ? 'border-green-200' : 'border-red-200');
-                  let iconClass = isPending ? 'fa-clock' : (isCorrect ? 'fa-check-circle' : 'fa-times-circle');
-
-                  return `
-                  <div class="border rounded-xl overflow-hidden shadow-sm ${borderClass}">
-                    <div class="flex justify-between items-center p-3 border-b ${headerClass}">
-                      <span class="font-bold"><i class="fas ${iconClass} mr-1"></i> សំណួរទី ${i+1}</span>
-                      <span class="font-bold bg-white px-3 py-1 rounded shadow-sm border ${borderClass}">
-                        ${isPending ? 'រង់ចាំកែ' : `${qScore} / ${q.points} ពិន្ទុ`}
-                      </span>
-                    </div>
-                    <div class="p-5 bg-white">
-                        <div class="ql-editor p-0 bg-transparent border-none text-gray-800 mb-4">${q.text}</div>
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <p class="text-sm text-gray-500 font-semibold mb-3"><i class="fas fa-reply text-blue-400"></i> ចម្លើយរបស់អ្នក៖</p>
-                          ${q.type === 'essay' ? `<p class="text-gray-800 whitespace-pre-wrap font-medium">${sAnswer || '<i class="text-gray-400">មិនបានឆ្លើយ</i>'}</p>` : `
-                            <div class="space-y-2">
-                              ${q.options.map((opt, oIdx) => {
-                                 let isStudentSelected = Array.isArray(sAnswer) ? sAnswer.includes(oIdx) : sAnswer == oIdx;
-                                 let isActuallyCorrect = Array.isArray(q.correctAnswer) ? q.correctAnswer.includes(oIdx) : q.correctAnswer == oIdx;
-                                 
-                                 let optBg = isStudentSelected ? (isActuallyCorrect ? 'bg-green-100 border-green-400 font-bold text-green-800' : 'bg-red-100 border-red-400 font-bold text-red-800') : (isActuallyCorrect ? 'bg-green-50 border-green-300 border-dashed text-green-700' : 'bg-white border-gray-200 text-gray-600');
-                                 let iconHtml = isStudentSelected ? '<i class="fas fa-check-circle ' + (isActuallyCorrect ? 'text-green-600' : 'text-red-600') + '"></i>' : (isActuallyCorrect ? '<i class="fas fa-check text-green-500"></i>' : '');
-                                 
-                                 return `<div class="px-4 py-3 border rounded-lg flex items-center justify-between transition ${optBg}">
-                                           <span>${String.fromCharCode(65 + oIdx)}. ${opt}</span>${iconHtml}
-                                         </div>`;
-                              }).join('')}
-                            </div>`}
-                        </div>
-                    </div>
-                  </div>`;
-                }).join('')}
-            </div>
-          </div>
-        `;
-      } else if (quizSubmitted) {
-        const res = currentScore, isPending = res.needsGrading;
-        contentHtml = `
-          <div class="text-center py-8">
-            <i class="fas ${isPending ? 'fa-clock text-yellow-500' : 'fa-check-circle text-green-500'} text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">${currentQuizIsLesson ? 'ការអានមេរៀនបានកត់ត្រា!' : (isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!')}</h2>
-            <p class="text-lg text-gray-600 mt-2 mb-4">${currentQuizIsLesson ? 'កំណត់ត្រាអានមេរៀនរបស់អ្នកត្រូវបានបញ្ជូនទៅកាន់គ្រូរួចរាល់។' : (isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។')}</p>
-            ${currentQuizIsLesson ? '' : `<div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto"><p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` : `<span class="font-extrabold text-blue-600 text-4xl">${res.got} / ${res.total}</span>`}</div>`}
-            
-            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                ${!currentQuizIsLesson && lastResultId ? `<button onclick="window.viewResult('${lastResultId}')" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>` : ''}
-                <button onclick="window.resetQuizState()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-xl hover:bg-gray-300 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-home"></i> ត្រឡប់ទៅបញ្ជី${currentQuizIsLesson ? 'មេរៀន' : 'វញ្ញាសា'}</button>
-            </div>
-          </div>
-        `;
-      } else if (existingResult && !currentQuizIsLesson && !quizStarted) {
-        const res = existingResult, isPending = res.needsGrading;
-        contentHtml = `
-          <div class="text-center py-8">
-            <i class="fas ${isPending ? 'fa-clock text-yellow-500' : 'fa-check-circle text-green-500'} text-6xl mb-4"></i>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">${isPending ? 'កិច្ចការបញ្ជូនរួចរាល់!' : 'សូមអបអរសាទរ!'}</h2>
-            <p class="text-lg text-gray-600 mt-2 mb-4">${isPending ? 'អ្នកមានសំណួរសរសេរដែលតម្រូវអោយគ្រូកែដាក់ពិន្ទុផ្ទាល់។' : 'អ្នកបានបញ្ចប់វិញ្ញាសានេះរួចរាល់។'}</p>
-            <div class="bg-gray-50 border rounded-xl p-6 max-w-sm mx-auto"><p class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-1">ពិន្ទុសរុបរបស់អ្នក</p>${isPending ? `<span class="font-extrabold text-yellow-600 text-2xl bg-yellow-100 px-4 py-1 rounded-full border border-yellow-200">រង់ចាំការកែ</span>` : `<span class="font-extrabold text-blue-600 text-4xl">${res.score} / ${res.totalPoints}</span>`}</div>
-            
-            <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button onclick="window.viewResult('${res.id}')" class="bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>
-                <button onclick="window.resetQuizState()" class="bg-gray-200 text-gray-800 px-6 py-3 rounded-xl hover:bg-gray-300 font-bold transition shadow-sm flex items-center justify-center gap-2"><i class="fas fa-home"></i> ត្រឡប់ទៅបញ្ជីវញ្ញាសា</button>
-            </div>
-          </div>
-        `;
-      } else if (quizStarted && currentQuizIsLesson) {
-        contentHtml = `
-          <div class="space-y-6 relative">
-            <div class="flex justify-start mb-2"><button onclick="window.resetQuizState()" class="flex items-center gap-2 text-purple-700 hover:text-purple-900 font-bold bg-purple-50 hover:bg-purple-100 px-5 py-2.5 rounded-xl border border-purple-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីមេរៀនវិញ</button></div>
-            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200 shadow-sm"><p class="font-bold text-purple-800 text-lg"><i class="fas fa-book-reader"></i> កំពុងអានមេរៀន៖ ខែ${selectedMonth}</p></div>
-            ${availableQuestions.map(q => `<div class="border-b pb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-purple-100 relative"><div class="absolute -left-3 -top-3 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold shadow-md"><i class="fas fa-book-open"></i></div><div class="ql-editor p-0 bg-transparent border-none text-base sm:text-lg mb-2 text-gray-800 font-medium">${q.text}</div></div>`).join('')}
-            ${existingResult ? 
-              `<button onclick="window.resetQuizState()" class="w-full bg-gray-500 text-white font-bold py-4 rounded-xl hover:bg-gray-600 transition text-lg shadow-md flex items-center justify-center gap-2"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីមេរៀនវិញ (បានអានរួច)</button>` 
-              : `<button onclick="window.submitQuiz()" class="w-full bg-purple-600 text-white font-bold py-4 rounded-xl hover:bg-purple-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>`}
-          </div>
-        `;
-      } else if (quizStarted && !currentQuizIsLesson) {
-        const startDateObj = new Date(quizStartTimestamp), startDateTimeStr = startDateObj.toLocaleDateString('km-KH') + ' ម៉ោង ' + startDateObj.toLocaleTimeString('km-KH', {hour: '2-digit', minute:'2-digit'});
-        contentHtml = `
-          <div id="quiz-timer" class="fixed bottom-4 right-4 sm:top-24 sm:bottom-auto p-4 bg-red-600 text-white rounded-xl font-bold shadow-2xl z-50 text-xl border-2 border-white transition-all"><i class="fas fa-clock"></i> ម៉ោងនៅសល់: --:--</div>
-          <div class="space-y-8 relative">
-            <div class="flex justify-start mb-2"><button onclick="window.pauseQuiz()" class="flex items-center gap-2 text-blue-700 hover:text-blue-900 font-bold bg-blue-50 hover:bg-blue-100 px-5 py-2.5 rounded-xl border border-blue-200 shadow-sm transition"><i class="fas fa-arrow-left"></i> ត្រឡប់ទៅបញ្ជីវញ្ញាសាវិញ</button></div>
-            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div><p class="font-bold text-yellow-800 text-lg mb-1">កំពុងប្រឡង៖ ខែ${selectedMonth}</p><div class="text-sm text-yellow-700 space-y-1"><p><i class="fas fa-calendar-check"></i> ចាប់ផ្តើម: <strong>${startDateTimeStr}</strong></p></div></div>
-              <div class="text-sm bg-white px-3 py-2 rounded border border-yellow-200 text-yellow-800 font-semibold"><i class="fas fa-hourglass-half"></i> រយៈពេល: ${currentQuizDuration / 60} នាទី</div>
-            </div>
-            ${availableQuestions.map((q, index) => `
-              <div class="border-b pb-8 bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 relative">
-                <div class="absolute -left-3 -top-3 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">${index + 1}</div>
-                <div class="flex items-center justify-between mb-4 pl-4 border-b pb-2"><span class="font-semibold text-gray-500 uppercase text-xs tracking-wider">${q.type === 'essay' ? 'សំណួរសរសេរ' : (q.type === 'multiple_choice_multi' ? 'ជ្រើសរើសចម្លើយ (ច្រើន)' : 'សំណួរជ្រើសរើស (១)')}</span><span class="text-sm text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">${q.points} ពិន្ទុ</span></div>
-                <div class="ql-editor p-0 bg-transparent border-none text-base sm:text-lg mb-6 text-gray-800 font-medium">${q.text}</div>
-                ${q.type === 'essay' ? `<div class="mt-2"><label class="block text-sm text-gray-500 mb-2 font-semibold"><i class="fas fa-pen text-blue-500"></i> ចម្លើយរបស់អ្នក៖</label><textarea onblur="window.selectAnswer('${q.id}', this.value)" class="w-full p-4 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 text-base sm:text-lg text-gray-800 bg-blue-50 focus:bg-white transition" rows="5" placeholder="វាយបញ្ចូលចម្លើយនៅទីនេះ...">${currentAnswers[q.id] || ''}</textarea></div>` : `<div class="space-y-3">${q.shuffledOptions ? q.shuffledOptions.map((opt, optIndex) => {
-                      let isSelectedMulti = Array.isArray(currentAnswers[q.id]) && currentAnswers[q.id].includes(optIndex), isSelectedSingle = currentAnswers[q.id] == optIndex, isSelected = q.type === 'multiple_choice_multi' ? isSelectedMulti : isSelectedSingle, lblClass = isSelected ? 'option-checked bg-blue-100 border-blue-500' : '';
-                      return `<label id="lbl-${q.id}-${optIndex}" class="opt-container-${q.id} flex items-start p-4 border rounded-xl cursor-pointer transition hover:bg-gray-50 active:bg-blue-50 ${lblClass}">${q.type === 'multiple_choice_multi' ? `<input type="checkbox" onchange="window.selectAnswerMulti('${q.id}', ${optIndex}, this.checked)" class="mt-1 mr-3 w-5 h-5 text-blue-600 rounded" ${isSelected ? 'checked' : ''}>` : `<input type="radio" name="question-${q.id}" value="${optIndex}" onchange="window.selectAnswer('${q.id}', ${optIndex})" class="mt-1 mr-3 w-5 h-5 text-blue-600" ${isSelected ? 'checked' : ''}>`}<span class="flex-1 leading-relaxed">${opt}</span></label>`;
-                    }).join('') : ''}</div>`}
-              </div>
-            `).join('')}
-            <button onclick="window.submitQuiz()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition text-lg shadow-lg flex items-center justify-center gap-2"><i class="fas fa-paper-plane"></i> បញ្ជូនកិច្ចការ</button>
-          </div>
-        `;
-      } else {
-        let listContent = '';
-        if (studentTab === 'exams') {
-            if (availableExams.length > 0) {
-              listContent = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${availableExams.map(exam => {
-                    const examMonthIndex = standardMonths.indexOf(exam.month), currentMonthIndex = standardMonths.indexOf(currentMonthName), isExpired = examMonthIndex !== -1 && currentMonthIndex !== -1 && examMonthIndex < currentMonthIndex, hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === exam.month && (r.teacherId === exam.teacherId || (!r.teacherId && exam.teacherId === 'legacy')) && !r.isLesson);
-                    return `<div class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm flex flex-col justify-between hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">រួចរាល់</div>` : (isExpired ? `<div class="absolute -right-6 top-4 bg-red-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">ផុតកំណត់</div>` : '')}<div><div class="flex justify-between items-start mb-3"><span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${exam.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${exam.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${exam.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${exam.teacherPhoto ? `<img src="${exam.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${exam.teacherName}</p></div></div>${hasTaken ? `<button onclick="window.viewResult('${hasTaken.id}')" class="w-full bg-green-50 text-green-700 border border-green-200 font-bold py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-green-100 transition"><i class="fas fa-list-check"></i> មើលលទ្ធផលលម្អិត</button>` : isExpired ? `<button disabled class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-lg cursor-not-allowed flex items-center justify-center gap-2"><i class="fas fa-times-circle"></i> មិនអាចប្រឡងបានទេ</button>` : `<button onclick="window.startExam('${exam.teacherId}', '${exam.month}', false)" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-play-circle"></i> ចាប់ផ្តើមប្រឡង</button>`}</div>`}).join('')}</div>`;
-            } else { listContent = `<div class="text-center p-8 bg-gray-50 rounded-xl border border-dashed"><i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">មិនមានវិញ្ញាសាបើកឲ្យប្រឡងទេនៅពេលនេះ...</p></div>`; }
-        } else {
-            if (availableLessons.length > 0) {
-              listContent = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${availableLessons.map(lesson => {
-                    const hasTaken = results.find(r => r.studentId === currentUser.ID && r.month === lesson.month && (r.teacherId === lesson.teacherId || (!r.teacherId && lesson.teacherId === 'legacy')) && r.isLesson);
-                    return `<div class="border border-purple-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition relative overflow-hidden">${hasTaken ? `<div class="absolute -right-6 top-4 bg-green-500 text-white text-xs font-bold py-1 px-8 transform rotate-45 shadow-sm">បានអាន</div>` : ''}<div><div class="flex justify-between items-start mb-3"><span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded-md uppercase">${lesson.subject}</span><span class="text-sm font-bold text-gray-600"><i class="fas fa-calendar-alt text-gray-400"></i> ខែ${lesson.month}</span></div><h5 class="font-bold text-gray-800 text-lg mb-2">${lesson.subject}</h5><div class="flex items-center gap-2 mb-4"><div class="w-8 h-8 rounded-full bg-gray-100 overflow-hidden shrink-0 border border-gray-200 flex items-center justify-center">${lesson.teacherPhoto ? `<img src="${lesson.teacherPhoto}" class="w-full h-full object-cover">` : `<i class="fas fa-user-tie text-gray-400 text-xs"></i>`}</div><p class="text-sm text-gray-600 font-semibold truncate">${lesson.teacherName}</p></div></div><button onclick="window.startExam('${lesson.teacherId}', '${lesson.month}', true)" class="w-full ${hasTaken ? 'bg-gray-100 text-gray-600' : 'bg-purple-600 text-white'} font-bold py-2 rounded-lg hover:bg-gray-200 hover:text-gray-800 shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-book-reader"></i> ${hasTaken ? 'អានម្តងទៀត' : 'ចូលអានមេរៀន'}</button></div>`}).join('')}</div>`;
-            } else { listContent = `<div class="text-center p-8 bg-purple-50 rounded-xl border border-dashed border-purple-200"><i class="fas fa-book text-4xl text-purple-300 mb-3"></i><p class="text-purple-600">មិនទាន់មានមេរៀនសម្រាប់អ្នកទេ...</p></div>`; }
-        }
-
-        contentHtml = `
-          <div class="space-y-5">
-            <div class="flex rounded-xl overflow-hidden shadow-sm border border-gray-200 bg-gray-100 p-1 mb-6">
-              <button onclick="window.setStudentTab('exams')" class="flex-1 py-3 font-bold text-sm sm:text-base rounded-lg transition-all ${studentTab === 'exams' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"><i class="fas fa-edit mb-1 block text-lg"></i> កិច្ចការប្រឡង</button>
-              <button onclick="window.setStudentTab('lessons')" class="flex-1 py-3 font-bold text-sm sm:text-base rounded-lg transition-all ${studentTab === 'lessons' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"><i class="fas fa-book-open mb-1 block text-lg"></i> មេរៀន</button>
-            </div>
-            ${listContent}
-          </div>
-        `;
+      if (activeExamQuestions) {
+         if (activeExamContext.isLesson) return renderLessonInterface();
+         else return renderExamInterface();
       }
 
-      let displayPhoto = currentUser.PhotoURL ? currentUser.PhotoURL.split(',')[0].trim() : '';
+      if (loadingData) return `<div class="flex flex-col items-center justify-center h-64"><div class="loader mb-4 border-blue-200 border-top-blue-600"></div><p class="text-blue-600 font-bold">កំពុងរៀបចំទិន្នន័យ...</p></div>`;
 
+      const myClassStr = String(currentUser.CLASS).trim();
+      const availableQuestions = questions.filter(q => {
+         const classList = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
+         return classList.some(c => c.trim() === myClassStr) && q.status === 'online';
+      });
+
+      const groupedExams = {};
+      availableQuestions.forEach(q => {
+         const subj = getSubject(q, q.teacherId);
+         const isLessonType = q.type === 'lesson'; 
+         
+         const key = `${q.teacherId}_|MATCH|_${q.month}_|MATCH|_${subj}_|MATCH|_${isLessonType}`; 
+            
+         if (!groupedExams[key]) groupedExams[key] = { 
+             teacherId: q.teacherId, teacherName: q.teacherName, 
+             month: q.month, subject: subj, isLesson: isLessonType, 
+             questions: [],
+             createdAt: q.createdAt && q.createdAt.toDate ? q.createdAt.toDate().getTime() : 0 
+         };
+         groupedExams[key].questions.push(q);
+         
+         let qTime = q.createdAt && q.createdAt.toDate ? q.createdAt.toDate().getTime() : 0;
+         if (qTime > groupedExams[key].createdAt) groupedExams[key].createdAt = qTime;
+      });
+
+      // តម្រៀបពីថ្មីនៅលើ
+      const groupedExamsArray = Object.entries(groupedExams).map(([keyStr, exam]) => ({ keyStr, ...exam }));
+      groupedExamsArray.sort((a, b) => b.createdAt - a.createdAt);
+
+      const standardMonths = ["មករា", "កុម្ភៈ", "មីនា", "មេសា", "ឧសភា", "មិថុនា", "កក្កដា", "សីហា", "កញ្ញា", "តុលា", "វិច្ឆិកា", "ធ្នូ"];
+      const currentMonthName = standardMonths[new Date().getMonth()];
+
+      let examsHtml = ''; let lessonsHtml = '';
+      let examCount = 0; let lessonCount = 0;
+      
+      groupedExamsArray.forEach((exam) => {
+         const isLesson = exam.isLesson;
+         const qCount = exam.questions.length;
+         const keyStr = exam.keyStr;
+         
+         let isExpired = false;
+         if (standardMonths.includes(exam.month)) {
+             isExpired = exam.month !== currentMonthName;
+         }
+         
+         const existingRes = results.find(r => {
+             const rSubj = getSubject(r, exam.teacherId);
+             return r.studentId === currentUser.ID && r.teacherId === exam.teacherId && r.month === exam.month && rSubj === exam.subject && (isLesson ? r.isLesson : !r.isLesson);
+         });
+         
+         const teacherProfile = teachersData.find(t => t.uid === exam.teacherId) || {};
+         const tName = teacherProfile.name || exam.teacherName || 'លោកគ្រូ/អ្នកគ្រូ';
+         const safeKeyStr = encodeURIComponent(keyStr).replace(/'/g, "%27");
+
+         if (isLesson) {
+             lessonCount++;
+             let previewText = exam.questions.length > 0 ? `សរុបមាន ${exam.questions.length} ចំណុច` : 'មេរៀន';
+             
+             lessonsHtml += `
+             <div class="bg-white rounded-2xl p-5 border ${existingRes ? 'border-gray-200 opacity-80' : 'border-purple-200 shadow-sm hover:shadow-md transition'} relative flex flex-col h-full">
+               <div class="flex items-start justify-between mb-4">
+                  <div class="flex items-center gap-3">
+                     <div class="w-12 h-12 ${existingRes ? 'bg-gray-100 text-gray-400' : 'bg-purple-100 text-purple-600'} rounded-full flex items-center justify-center text-xl font-bold border border-white shadow-sm shrink-0"><i class="fas fa-book-reader"></i></div>
+                     <div class="overflow-hidden">
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight truncate" title="${exam.subject}">${exam.subject}</h3>
+                        <p class="text-xs text-purple-600 font-semibold mt-1">ខែ៖ ${exam.month}</p>
+                     </div>
+                  </div>
+               </div>
+               <div class="text-sm text-purple-700 font-bold mb-5 flex items-center gap-2 mt-auto"><i class="fas fa-layer-group"></i> ${previewText}</div>
+               <div class="text-sm text-gray-600 mb-5 flex items-center gap-2"><i class="fas fa-chalkboard-teacher text-gray-400"></i> ដោយ៖ <span class="font-bold text-gray-700">${tName}</span></div>
+               <button onclick="window.startExam('${safeKeyStr}')" class="w-full ${existingRes ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : 'bg-purple-600 hover:bg-purple-700 text-white'} font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm">
+                 <i class="fas ${existingRes ? 'fa-history' : 'fa-book-open'}"></i> ${existingRes ? 'ចូលអានឡើងវិញ' : (isExpired ? 'ចូលអាន (ផុតសុពលភាព)' : 'ចូលអានមេរៀន')}
+               </button>
+             </div>`;
+         } else {
+             examCount++;
+             let durationMinutes = (teacherProfile.examDurations && teacherProfile.examDurations[exam.month]) ? Number(teacherProfile.examDurations[exam.month]) : 60;
+             let totalPoints = exam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+             
+             const sessionDocId = `${currentUser.ID}_${exam.teacherId}_${exam.month}_${encodeURIComponent(exam.subject)}`;
+             
+             examsHtml += `
+             <div class="bg-white rounded-2xl p-5 border ${existingRes ? 'border-gray-200 opacity-80' : 'border-blue-200 shadow-sm hover:shadow-md transition'} relative flex flex-col h-full">
+               <div class="flex items-start justify-between mb-3 gap-2">
+                 <div class="flex items-center gap-3">
+                   <div class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold border border-white shadow-sm shrink-0 ${existingRes ? 'bg-gray-100 text-gray-400' : 'bg-blue-100 text-blue-600'}"><i class="fas fa-file-alt"></i></div>
+                   <div class="overflow-hidden">
+                     <h3 class="font-bold text-gray-800 text-lg leading-tight truncate" title="${exam.subject}">${exam.subject}</h3>
+                     <p class="text-xs text-blue-600 font-semibold mt-1 bg-blue-50 inline-block px-2 py-0.5 rounded border border-blue-100">ខែ៖ ${exam.month}</p>
+                   </div>
+                 </div>
+               </div>
+               
+               <div class="text-sm text-gray-600 mb-4 flex items-center gap-2 truncate mt-auto"><i class="fas fa-chalkboard-teacher text-gray-400"></i> ដោយ៖ <span class="font-bold text-gray-700 truncate">${tName}</span></div>
+               
+               <div class="flex justify-around items-center bg-gray-50 p-2 rounded-xl mb-4 border border-gray-100">
+                  <div class="text-center">
+                     <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">សំណួរ</div>
+                     <div class="font-extrabold text-gray-800">${qCount}</div>
+                  </div>
+                  <div class="w-px h-6 bg-gray-200"></div>
+                  <div class="text-center">
+                     <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">នាទីនៅសល់</div>
+                     <div class="font-extrabold text-blue-600 session-timer-display" data-session-id="${sessionDocId}" data-default-duration="${durationMinutes}">
+                        ${existingRes ? '0' : durationMinutes}
+                     </div>
+                  </div>
+                  <div class="w-px h-6 bg-gray-200"></div>
+                  <div class="text-center">
+                     <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">ពិន្ទុ</div>
+                     <div class="font-extrabold text-orange-500">${totalPoints}</div>
+                  </div>
+               </div>
+
+               ${existingRes 
+                 ? `<button disabled class="w-full bg-gray-100 text-gray-500 font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm cursor-not-allowed border border-gray-200"><i class="fas fa-lock text-gray-400"></i> បានប្រឡងរួច</button>` 
+                 : (isExpired 
+                    ? `<button disabled class="w-full bg-red-50 text-red-500 font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm cursor-not-allowed border border-red-200"><i class="fas fa-ban"></i> ផុតសុពលភាព</button>`
+                    : `<button onclick="window.startExam('${safeKeyStr}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm"><i class="fas fa-pen-nib"></i> ចាប់ផ្តើមធ្វើវិញ្ញាសា</button>`
+                 )}
+             </div>`;
+         }
+      });
+
+      // --- រចនាប័ទ្ម Main Dashboard View ---
+      if (activeDashboardView === 'main') {
+          return `
+            <div class="max-w-5xl mx-auto px-2 sm:px-4 space-y-8 pb-10 mt-6">
+               <!-- Welcome Banner -->
+               <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6 border-b-4 border-blue-400">
+                  <div class="absolute top-0 right-0 opacity-10 text-9xl -mt-10 -mr-10"><i class="fas fa-graduation-cap"></i></div>
+                  <div class="relative z-10 text-center sm:text-left">
+                     <h2 class="text-2xl sm:text-4xl font-moul mb-3 drop-shadow-md">សួស្តី, ${currentUser.FNAME} ${currentUser.LNAME}! 👋</h2>
+                     <p class="text-blue-100 font-medium max-w-lg text-lg">សូមស្វាគមន៍មកកាន់ប្រព័ន្ធសិក្សានៃវិទ្យាល័យកូប។ តើថ្ងៃនេះអ្នកចង់ធ្វើអ្វីដែរ?</p>
+                  </div>
+               </div>
+
+               <!-- Two Main Choices -->
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                  <button onclick="window.setDashboardView('lessons')" class="bg-white p-8 rounded-3xl shadow-sm border-2 border-transparent hover:border-purple-400 hover:shadow-lg transition-all text-center group transform hover:-translate-y-1">
+                      <div class="w-24 h-24 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl group-hover:scale-110 transition duration-300 shadow-inner"><i class="fas fa-book-open"></i></div>
+                      <h3 class="text-2xl font-moul text-gray-800 mb-2">មេរៀន / អំណាន</h3>
+                      <p class="text-gray-500 font-semibold mb-6">ចូលអានមេរៀន ឯកសារ និងអត្ថបទថ្មីៗ</p>
+                      <span class="bg-purple-100 text-purple-700 font-bold px-5 py-2 rounded-full text-sm border border-purple-200">មាន ${lessonCount} មេរៀន</span>
+                  </button>
+
+                  <button onclick="window.setDashboardView('exams')" class="bg-white p-8 rounded-3xl shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-lg transition-all text-center group transform hover:-translate-y-1">
+                      <div class="w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl group-hover:scale-110 transition duration-300 shadow-inner"><i class="fas fa-pen-square"></i></div>
+                      <h3 class="text-2xl font-moul text-gray-800 mb-2">វិញ្ញាសាប្រឡង</h3>
+                      <p class="text-gray-500 font-semibold mb-6">ចូលធ្វើវិញ្ញាសា លំហាត់ ឬការប្រឡងប្រចាំខែ</p>
+                      <span class="bg-blue-100 text-blue-700 font-bold px-5 py-2 rounded-full text-sm border border-blue-200">មាន ${examCount} វិញ្ញាសា</span>
+                  </button>
+               </div>
+            </div>
+          `;
+      } 
+      // --- រចនាប័ទ្ម Exams View ---
+      else if (activeDashboardView === 'exams') {
+          return `
+            <div class="max-w-6xl mx-auto px-2 sm:px-4 space-y-6 pb-10 mt-6">
+               <div class="flex items-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+                  <button onclick="window.setDashboardView('main')" class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-blue-600 hover:text-white transition shadow-sm border border-gray-200"><i class="fas fa-arrow-left text-xl"></i></button>
+                  <div>
+                      <h2 class="text-xl sm:text-2xl font-moul text-blue-900 leading-tight">វិញ្ញាសាប្រឡង / លំហាត់</h2>
+                      <p class="text-sm text-gray-500 font-semibold mt-1">ជ្រើសរើសមុខវិជ្ជាណាមួយខាងក្រោមដើម្បីចាប់ផ្តើម</p>
+                  </div>
+               </div>
+               ${examsHtml ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">${examsHtml}</div>` : `<div class="bg-white p-12 rounded-3xl text-center shadow-sm border border-gray-200 border-dashed"><div class="text-6xl text-gray-300 mb-4"><i class="fas fa-box-open"></i></div><p class="text-gray-500 font-medium text-lg">មិនទាន់មានវិញ្ញាសាប្រឡងសម្រាប់អ្នកនៅឡើយទេ។</p></div>`}
+            </div>
+          `;
+      }
+      // --- រចនាប័ទ្ម Lessons View ---
+      else if (activeDashboardView === 'lessons') {
+          return `
+            <div class="max-w-6xl mx-auto px-2 sm:px-4 space-y-6 pb-10 mt-6">
+               <div class="flex items-center gap-4 mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+                  <button onclick="window.setDashboardView('main')" class="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 hover:bg-purple-600 hover:text-white transition shadow-sm border border-gray-200"><i class="fas fa-arrow-left text-xl"></i></button>
+                  <div>
+                      <h2 class="text-xl sm:text-2xl font-moul text-purple-900 leading-tight">មេរៀន / អំណាន</h2>
+                      <p class="text-sm text-gray-500 font-semibold mt-1">ជ្រើសរើសមេរៀនណាមួយខាងក្រោមដើម្បីចូលអាន</p>
+                  </div>
+               </div>
+               ${lessonsHtml ? `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">${lessonsHtml}</div>` : `<div class="bg-white p-12 rounded-3xl text-center shadow-sm border border-gray-200 border-dashed"><div class="text-6xl text-gray-300 mb-4"><i class="fas fa-book"></i></div><p class="text-gray-500 font-medium text-lg">មិនទាន់មានមេរៀនសម្រាប់អាននៅឡើយទេ។</p></div>`}
+            </div>
+          `;
+      }
+    }
+
+    function renderLessonInterface() {
+        return `
+        <div class="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 h-[calc(100vh-80px)] flex flex-col">
+            <div class="bg-white rounded-t-2xl border-b border-gray-200 p-4 sm:p-5 flex justify-between items-center shadow-sm shrink-0">
+               <div>
+                  <h2 class="text-lg sm:text-xl font-moul text-purple-800 truncate leading-tight"><i class="fas fa-book-reader mr-2"></i>${activeExamContext.subject}</h2>
+                  <p class="text-xs sm:text-sm text-gray-500 mt-1 font-semibold">អត្ថបទមេរៀនទាំងអស់</p>
+               </div>
+               <button onclick="window.exitExam()" class="w-10 h-10 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition shadow-sm border"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            
+            <div class="bg-white p-5 sm:p-8 flex-1 overflow-y-auto shadow-sm text-gray-800 text-base sm:text-lg leading-relaxed font-serif border-x border-gray-200 space-y-8">
+               ${activeExamQuestions.map((q, idx) => `
+                   <div class="border-b border-dashed border-gray-300 pb-8 mb-8 last:border-0 last:mb-0 last:pb-0">
+                       <div class="flex items-center gap-2 mb-4">
+                           <span class="bg-purple-100 text-purple-700 font-bold px-4 py-1.5 rounded-lg text-sm border border-purple-200">១</span>
+                       </div>
+                       <div class="ql-editor !p-0">${q.text}</div>
+                   </div>
+               `).join('')}
+            </div>
+            
+            <div class="bg-gray-50 border-t border-gray-200 border-x rounded-b-2xl p-4 flex justify-end items-center shadow-sm shrink-0">
+               ${activeExamContext.canSubmitLesson 
+                 ? `<button id="btnSubmitLesson" onclick="window.submitLessonRead()" class="px-6 py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition shadow-md flex items-center gap-2 text-lg"><i class="fas fa-check-circle"></i> បញ្ចប់ការអាន</button>`
+                 : `<button onclick="window.exitExam()" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition shadow-sm flex items-center gap-2 text-lg"><i class="fas fa-arrow-left"></i> ត្រឡប់ក្រោយ</button>`
+               }
+            </div>
+        </div>`;
+    }
+
+    function renderExamInterface() {
       return `
-        <div class="max-w-4xl mx-auto mt-4 sm:mt-6">
-          <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6 relative overflow-hidden">
-            <div class="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-full -z-10"></div>
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white overflow-hidden border-4 border-blue-100 flex-shrink-0 flex items-center justify-center shadow-md">
-              ${displayPhoto ? `<img src="${displayPhoto}" alt="Profile" class="w-full h-full object-cover" onerror="this.onerror=null; this.src='https://via.placeholder.com/150?text=No+Photo'">` : `<i class="fas fa-user-graduate text-3xl sm:text-4xl text-gray-300"></i>`}
-            </div>
-            <div class="flex-1">
-              <h2 class="text-xl sm:text-2xl font-bold text-gray-800">${currentUser.FNAME} ${currentUser.LNAME}</h2>
-              <div class="mt-3 flex flex-wrap justify-center sm:justify-start gap-2 items-center">
-                <span class="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-sm font-semibold"><i class="fas fa-id-card mr-1"></i> ID: ${currentUser.ID}</span>
-                <span class="bg-purple-50 text-purple-700 border border-purple-200 px-3 py-1 rounded-full text-sm font-semibold"><i class="fas fa-chalkboard-teacher mr-1"></i> ថ្នាក់ទី ${currentUser.CLASS}</span>
-                <span class="bg-gray-100 text-gray-700 border border-gray-200 px-3 py-1 rounded-full text-sm font-semibold"><i class="fas fa-venus-mars mr-1"></i> ${currentUser.GEN}</span>
+        <div class="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 h-[calc(100vh-80px)] flex flex-col">
+           
+           <!-- Main Content Area -->
+           <div class="flex-1 flex flex-col min-w-0 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-full">
+               
+               <!-- Header -->
+               <div class="bg-gray-50 border-b border-gray-200 p-4 sm:p-5 flex justify-between items-center shadow-sm shrink-0">
+                  <div class="min-w-0 pr-4">
+                     <h2 class="text-lg sm:text-xl font-moul text-blue-900 truncate"><i class="fas fa-pen-nib text-blue-500 mr-2"></i>${activeExamContext.subject}</h2>
+                     <p class="text-xs sm:text-sm text-gray-500 font-semibold mt-1">សូមអូសមើល និងឆ្លើយសំណួរទាំងអស់ខាងក្រោម</p>
+                  </div>
+                  <div class="flex items-center gap-3">
+                     <div id="exam-timer" class="bg-blue-100 text-blue-800 font-bold text-lg sm:text-2xl px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl border-2 border-blue-200 shadow-sm shrink-0 font-mono tracking-wider">00:00</div>
+                     <button onclick="window.exitExam()" class="w-10 h-10 bg-white text-gray-600 rounded-full flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition shadow-sm border border-gray-300"><i class="fas fa-times text-lg"></i></button>
+                  </div>
+               </div>
+               
+               <!-- Questions List View (All in One Page) -->
+               <div class="p-5 sm:p-8 flex-1 overflow-y-auto scroll-smooth space-y-10 bg-white relative">
+                  ${activeExamQuestions.map((q, idx) => {
+                     const isEssay = q.type === 'essay';
+                     const isMulti = q.type === 'multiple_choice_multi';
+                     let existingAns = studentAnswers[q.id];
 
-                <button onclick="window.openChangePassModal()" class="ml-2 text-sm text-blue-600 font-bold hover:text-blue-800 transition underline underline-offset-2"><i class="fas fa-key"></i> ប្តូរពាក្យសម្ងាត់</button>
-                      <a href="stdphoto.html" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold px-4 py-2.5 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors mr-2 border border-blue-200 shadow-sm" title="ត្រឡប់ទៅទំព័រដើម">
-            <i class="fas fa-graduation-cap"></i> <span class="hidden md:block">ទៅកាន់ប្រព័ន្ធទាញយករូបថត</span>
-        </a>
-                </div>
-            </div>
-          </div>
-          <div class="bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h3 class="text-lg sm:text-xl font-bold text-gray-800 mb-6 border-b pb-3 flex items-center gap-2 font-moul"><i class="fas fa-tasks text-blue-600"></i> កិច្ចការរបស់អ្នក</h3>
-            ${contentHtml}
-          </div>
+                     let answerArea = '';
+                     if (isEssay) {
+                         answerArea = `<textarea class="w-full p-4 border-2 border-blue-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition text-base sm:text-lg min-h-[150px] bg-blue-50 resize-y" placeholder="វាយបញ្ចូលចម្លើយរបស់អ្នកនៅទីនេះ..." oninput="window.saveEssayAnswerUI('${q.id}', this.value)">${existingAns || ''}</textarea>`;
+                     } else {
+                         answerArea = `<div class="space-y-3" id="q-options-${q.id}">
+                             ${(q.options || []).map((opt, oIdx) => {
+                                 let isSelected = Array.isArray(existingAns) ? existingAns.includes(oIdx) : existingAns === oIdx;
+                                 let btnClass = isSelected ? "bg-blue-50 border-blue-500 text-blue-900" : "bg-white border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-gray-50";
+                                 let iconClass = isSelected 
+                                    ? (isMulti ? "w-6 h-6 rounded border-2 border-blue-500 bg-blue-500 text-white flex items-center justify-center shrink-0 mt-0.5" : "w-6 h-6 rounded-full border-8 border-blue-500 shrink-0 mt-0.5 bg-white")
+                                    : (isMulti ? "w-6 h-6 rounded border-2 border-gray-300 shrink-0 mt-0.5 group-hover:border-blue-300 transition" : "w-6 h-6 rounded-full border-2 border-gray-300 shrink-0 mt-0.5 group-hover:border-blue-300 transition");
+                                 let iconInner = (isSelected && isMulti) ? '<i class="fas fa-check text-sm"></i>' : '';
+
+                                 return `<button class="opt-btn w-full text-left p-4 border-2 rounded-2xl transition flex items-start gap-4 text-base sm:text-lg cursor-pointer shadow-sm relative overflow-hidden group ${btnClass}" onclick="window.selectOptionUI('${q.id}', ${oIdx}, '${q.type}')">
+                                            <div class="icon-box ${iconClass}">${iconInner}</div>
+                                            <div class="flex-1 text-left pt-0.5">${opt}</div>
+                                         </button>`;
+                             }).join('')}
+                         </div>`;
+                     }
+
+                     return `
+                     <div id="q-${q.id}" class="scroll-mt-6 border border-gray-200 rounded-3xl p-5 sm:p-6 shadow-sm bg-white">
+                         <div class="flex items-center gap-2 mb-4 pb-3 border-b border-dashed border-gray-200">
+                            <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center">${idx + 1}</span>
+                            <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">${q.points} ពិន្ទុ</span>
+                         </div>
+                         <div class="text-gray-800 text-lg mb-6 ql-editor font-serif !p-0">${q.text}</div>
+                         ${answerArea}
+                     </div>`;
+                  }).join('')}
+
+                  <div class="mt-10 pt-6 border-t border-dashed border-gray-300 flex justify-center pb-8">
+                     <button id="btnSubmitExamFinalBottom" onclick="window.confirmSubmitExam()" class="px-8 py-4 bg-green-600 text-white rounded-2xl font-bold hover:bg-green-700 transition shadow-lg flex items-center justify-center gap-2 text-lg w-full md:w-auto min-w-[250px]"><i class="fas fa-paper-plane"></i> បញ្ជូនចម្លើយ</button>
+                  </div>
+               </div>
+           </div>
         </div>
-        
-        ${isChangePassModalOpen ? `
-        <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-          <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
-            <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
-              <h3 class="text-xl font-moul text-blue-800"><i class="fas fa-key text-blue-600 mr-2"></i> ប្តូរពាក្យសម្ងាត់</h3>
-              
-              <button onclick="window.closeChangePassModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="p-6">
-              <form onsubmit="window.saveNewPassword(event)" class="space-y-4">
-                <label class="block text-gray-700 text-sm font-bold mb-1">ការផ្លាស់ប្តូរពាក្យសម្ងាត់នេះគឺសម្រាប់តែកម្មវិធីប្រឡងអនឡាញនេះតែប៉ុណ្ណោះ មិនមែនសម្រាប់កម្មវិធីទាញយករូបថតទេ! </label>
-                <div><label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់បច្ចុប្បន្ន <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="oldPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-gray-50" placeholder="វាយពាក្យសម្ងាត់ចាស់របស់អ្នក"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('oldPass', this)"></i></div></div>
-                <div><label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="newPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មី (យ៉ាងហោច ៤ ខ្ទង់)"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('newPass', this)"></i></div></div>
-                <div><label class="block text-gray-700 text-sm font-bold mb-1">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label><div class="relative"><input type="password" id="confirmPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីម្តងទៀត"><i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('confirmPass', this)"></i></div></div>
-                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100"><button type="button" onclick="window.closeChangePassModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button><button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-save"></i> រក្សាទុក</button></div>
-              </form>
-            </div>
-          </div>
-        </div>
-        
-        <style>@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }</style>
-        ` : ''}
       `;
+    }
+
+    async function updateRemainingTimes() {
+        if (activeExamQuestions) return; // កុំធ្វើការពេលកំពុងប្រឡង
+
+        const timerDisplays = document.querySelectorAll('.session-timer-display');
+        if (timerDisplays.length === 0) return;
+
+        let now = Date.now();
+
+        // ប្រើ Promise.all ដើម្បីទាញទិន្នន័យពី Cloud មកបង្ហាញលើកាត
+        const fetchPromises = Array.from(timerDisplays).map(async (el) => {
+            if(el.innerText === '0') return; // បើមានពិន្ទុ ឬប្រឡងរួច មិនបាច់ឆែកទេ
+
+            const sessionDocId = el.getAttribute('data-session-id');
+            const defaultDuration = Number(el.getAttribute('data-default-duration'));
+
+            try {
+                const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'exam_sessions', sessionDocId);
+                const sessionSnap = await getDoc(sessionRef);
+
+                if (sessionSnap.exists()) {
+                    const sessionData = sessionSnap.data();
+                    let remainingSecs = Math.floor((sessionData.endTime - now) / 1000);
+                    
+                    if (remainingSecs <= 0) {
+                        el.innerText = '0';
+                        el.classList.add('text-red-500');
+                    } else {
+                        const m = Math.floor(remainingSecs / 60);
+                        el.innerText = `${m} នាទី`;
+                        el.classList.add('text-orange-500');
+                    }
+                } else {
+                    el.innerText = `${defaultDuration} នាទី`;
+                }
+            } catch (e) {
+                console.error("Error fetching timer for card", e);
+                el.innerText = `${defaultDuration} នាទី`;
+            }
+        });
+
+        await Promise.all(fetchPromises);
     }
 
     function renderApp() {
       renderHeader();
-      const container = document.getElementById('app-container');
-      
-      if (!userRole) { 
-          window.location.href = 'index.html'; 
-      } else if (userRole === 'student') { 
-          container.innerHTML = renderStudent(); 
-      }
+      document.getElementById('app-container').innerHTML = renderStudent();
+      document.querySelectorAll('.math-render').forEach(el => {
+          try { katex.render(el.innerText, el, { throwOnError: false, displayMode: false }); } catch(e){}
+      });
+
+      // Update remaining times on dashboard cards
+      updateRemainingTimes();
     }
 
     initApp();
