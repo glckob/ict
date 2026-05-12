@@ -78,6 +78,9 @@
           
           <!-- Right side: Action Buttons -->
           <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-end">
+              <button id="btn-fetch-online" class="btn bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 py-1.5 px-3 text-sm flex-1 md:flex-none justify-center h-10" title="ទាញពិន្ទុពីប្រព័ន្ធប្រឡងអនឡាញ">
+                  <i class="fas fa-cloud-download-alt"></i> <span class="hidden sm:inline">ទាញពី Online</span>
+              </button>
               <button id="btn-export-excel" class="btn bg-green-50 text-green-700 border-green-200 hover:bg-green-100 py-1.5 px-3 text-sm flex-1 md:flex-none justify-center h-10" title="នាំចេញ Excel">
                   <i class="fas fa-file-excel"></i> <span class="hidden sm:inline">Excel</span>
               </button>
@@ -102,7 +105,7 @@
       <!-- Information Alert Slim -->
       <div class="text-xs sm:text-sm text-gray-600 bg-blue-50 px-3 py-1.5 border-b border-blue-100 flex items-center shrink-0 hidden" id="grid-info">
           <i class="fas fa-info-circle text-blue-500 mr-2"></i> 
-          <span class="truncate">អ្នកអាចវាយបញ្ចូលពិន្ទុដោយប្រើ Keyboard (ព្រួញឡើងចុះ ឆ្វេងស្តាំ) និង Copy/Paste ពី Excel។ ក្រឡាពណ៌បៃតងបញ្ជាក់ថាពិន្ទុពេញ។ បន្ទាប់ពីបញ្ចូលពិន្ទុរួចសូមចុចរក្សាទុក បើមិនដូចនោះទិន្នន័យមិនបានរក្សាទុកទេ!</span>
+          <span class="truncate">អ្នកអាចវាយបញ្ចូលពិន្ទុដោយប្រើ Keyboard ឬ ទាញយកពិន្ទុអនឡាញ។ ក្រឡាពណ៌បៃតងបញ្ជាក់ថាពិន្ទុពេញ។ បន្ទាប់ពីបញ្ចូលពិន្ទុរួចសូមចុចរក្សាទុក!</span>
       </div>
 
       <!-- Main Content (Full Width & Height Grid) -->
@@ -170,7 +173,7 @@
                   <div class="p-6 text-gray-700 text-center whitespace-pre-wrap leading-relaxed">${message}</div>
                   <div class="p-4 border-t flex justify-end gap-3 bg-gray-50">
                       <button id="custom-confirm-no" class="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-xl font-bold hover:bg-gray-300 transition">បោះបង់</button>
-                      <button id="custom-confirm-yes" class="bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-red-700 transition shadow-md">យល់ព្រមលុប</button>
+                      <button id="custom-confirm-yes" class="bg-red-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-red-700 transition shadow-md">យល់ព្រម</button>
                   </div>
               </div>
           </div>`;
@@ -189,10 +192,12 @@
 
       let publicStudentsRaw = [];
       let classesData = [], studentsData = [], subjectsData = [], examsData = [], scoresData = [], attendancesData = [];
+      let onlineResultsData = []; // Store data from online exam system
       let unsubscribes = [];
 
       function clearData() { 
           publicStudentsRaw=[]; classesData=[]; studentsData=[]; subjectsData=[]; examsData=[]; scoresData=[]; attendancesData=[]; 
+          onlineResultsData=[];
           unsubscribes.forEach(u=>u()); unsubscribes=[]; 
       }
 
@@ -236,6 +241,11 @@
         unsubscribes.push(onSnapshot(getCol('exams'), s => { examsData = s.docs.map(d=>({id: d.id, ...d.data()})); updateSelects(); renderScoresGrid(); }));
         unsubscribes.push(onSnapshot(getCol('scores'), s => { scoresData = s.docs.map(d=>({id: d.id, ...d.data()})); renderScoresGrid(); }));
         unsubscribes.push(onSnapshot(getCol('attendances'), s => { attendancesData = s.docs.map(d=>({id: d.id, ...d.data()})); renderScoresGrid(); }));
+
+        // Fetch Online Results
+        unsubscribes.push(onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'results'), s => { 
+            onlineResultsData = s.docs.map(d=>({id: d.id, ...d.data()})); 
+        }));
       }
 
       $('#form-auth').addEventListener('submit', async (e) => {
@@ -488,7 +498,82 @@
           if (pasteCount > 0) notify(`បាន Paste បញ្ចូលទិន្នន័យចំនួន ${pasteCount} ក្រឡា!`, true);
       });
 
-      // រក្សាទុកពិន្ទុ និងអវត្តមាន
+      // មុខងារជំនួយ៖ ចាប់គូខែឆ្លាតវៃ (ឧ. "2024-04" ស្មើនឹង "មេសា")
+      function isMonthMatch(vcmsMonth, onlineMonth) {
+          if (!vcmsMonth || !onlineMonth) return false;
+          if (vcmsMonth.trim() === onlineMonth.trim()) return true;
+          
+          const parts = vcmsMonth.split('-');
+          if (parts.length === 2) {
+              const mIndex = parseInt(parts[1], 10) - 1; // 04 -> 3
+              const kmMonths = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+              if (mIndex >= 0 && mIndex < 12) {
+                  return onlineMonth.includes(kmMonths[mIndex]) || onlineMonth === parts[1];
+              }
+          }
+          return false;
+      }
+
+      // ទាញពិន្ទុពីប្រព័ន្ធប្រឡងអនឡាញ (Online Exams)
+      $('#btn-fetch-online').onclick = () => {
+          const cId = $('#score-class').value;
+          const eId = $('#score-exam').value;
+
+          if (!cId || !eId) {
+              window.customAlert('សូមជ្រើសរើសថ្នាក់ និងការប្រឡងជាមុនសិន!');
+              return;
+          }
+
+          const currentExam = examsData.find(e => String(e.id) === String(eId));
+          if (!currentExam || !currentExam.month) {
+              window.customAlert('ការប្រឡងនេះមិនមានខែត្រឹមត្រូវទេ!');
+              return;
+          }
+
+          const examMonth = currentExam.month; // ឧ. 2024-04
+
+          window.customConfirm(`តើលោកគ្រូ/អ្នកគ្រូពិតជាចង់ទាញយកពិន្ទុពីប្រព័ន្ធប្រឡងអនឡាញ (សម្រាប់ខែ ${examMonth}) មកបញ្ចូលក្នុងតារាងនេះមែនទេ?\n\nបញ្ជាក់៖ ប្រព័ន្ធនឹងទាញយកតែពិន្ទុណាដែលបានកែរួចរាល់ (មិនជាប់រង់ចាំគ្រូកែ) ប៉ុណ្ណោះ។`, () => {
+              const subs = getSubs(cId);
+              let fetchCount = 0;
+
+              document.querySelectorAll('.score-input').forEach(inp => {
+                  const stuId = String(inp.dataset.student);
+                  const subId = String(inp.dataset.subject);
+                  const subjObj = subs.find(s => String(s.id) === String(subId));
+                  if (!subjObj) return;
+
+                  // ផ្ទៀងផ្ទាត់ដោយប្រើ Smart Month Matching និង Subject Name
+                  const matchingResult = onlineResultsData.find(r =>
+                      String(r.studentId) === String(stuId) &&
+                      isMonthMatch(examMonth, r.month) && // ការប្រើប្រាស់មុខងារថ្មីនៅទីនេះ
+                      !r.isLesson &&
+                      !r.needsGrading &&
+                      r.subject && r.subject.trim().toLowerCase() === subjObj.name.trim().toLowerCase()
+                  );
+
+                  if (matchingResult && matchingResult.score !== undefined) {
+                      let finalScore = Number(matchingResult.score);
+                      let maxVal = parseFloat(inp.getAttribute('max'));
+                      
+                      // ធានាថាពិន្ទុមិនលើសពិន្ទុពេញនៃមុខវិជ្ជានោះ
+                      if (!isNaN(maxVal) && finalScore > maxVal) finalScore = maxVal; 
+                      
+                      inp.value = finalScore;
+                      // Trigger input event ដើម្បីឲ្យដូរពណ៌ និងដឹងពីការផ្លាស់ប្តូរ
+                      inp.dispatchEvent(new Event('input', { bubbles: true }));
+                      fetchCount++;
+                  }
+              });
+
+              if (fetchCount > 0) {
+                  notify(`បានទាញយកពិន្ទុចំនួន ${fetchCount} កន្លែងជោគជ័យ! សូមចុចរក្សាទុក។`, true);
+              } else {
+                  notify(`មិនមានពិន្ទុដែលបានកែរួចរាល់ សម្រាប់ខែនេះទេ (សូមពិនិត្យមើលឈ្មោះមុខវិជ្ជាក្រែងលោខុសគ្នា)!`, false);
+              }
+          });
+      };
+
+      // រក្សាទុកពិន្ទុ និងអវត្តមានចូល Database VCMS
       $('#btn-save-all-scores').onclick = async() => {
           const eId = $('#score-exam').value;
           const cId = $('#score-class').value;
@@ -691,7 +776,7 @@
           notify('នាំចេញទិន្នន័យទៅជា Excel ជោគជ័យ!', true);
       };
 
-      // បើកផ្ទាំងបញ្ជាចម្លងពិន្ទុ
+      // បើកផ្ទាំងបញ្ជាចម្លងពិន្ទុពីខែចាស់
       $('#btn-copy-scores-modal').onclick = () => {
           const cId = $('#score-class').value;
           const targetEId = $('#score-exam').value;
@@ -721,7 +806,7 @@
           $('#copy-scores-modal').classList.add('flex');
       };
 
-      // ដំណើរការការចម្លង
+      // ដំណើរការការចម្លងពីខែចាស់
       $('#btn-execute-copy').onclick = () => {
           const sourceEId = $('#copy-source-exam').value;
           if (!sourceEId) {
