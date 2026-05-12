@@ -265,7 +265,32 @@
       setTimeout(() => { loadingData = false; renderApp(); }, 500);
     }
 
-    window.logout = () => { localStorage.removeItem('studentSession'); signOut(auth).then(() => { window.location.href = 'index.html'; }); };
+    window.logout = () => { 
+        // ១. លុបទិន្នន័យ Session ចេញពីកុំព្យូទ័រ/ទូរស័ព្ទ
+        localStorage.removeItem('studentSession'); 
+        
+        // ២. បង្ហាញ UI ថាកំពុងចាកចេញភ្លាមៗ
+        const container = document.getElementById('app-container');
+        if(container) {
+            container.innerHTML = '<div class="flex flex-col items-center justify-center h-[60vh]"><div class="loader mb-4 border-red-200 border-top-red-600"></div><p class="text-red-600 font-bold text-lg">កំពុងចាកចេញ...</p></div>';
+        }
+
+        // ៣. ការពារការគាំងរបស់ Firebase ដោយបង្ខំឲ្យលោតទៅទំព័រដើមយ៉ាងយូរ 800ms
+        let isRedirected = false;
+        const forceRedirect = () => {
+            if (!isRedirected) {
+                isRedirected = true;
+                window.location.replace('index.html');
+            }
+        };
+
+        setTimeout(forceRedirect, 800);
+
+        signOut(auth).then(forceRedirect).catch((e) => {
+            console.error("Logout error", e);
+            forceRedirect();
+        });
+    };
 
     window.togglePassword = (inputId, iconEl) => {
         const input = document.getElementById(inputId);
