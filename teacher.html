@@ -466,8 +466,12 @@
     window.handleSaveQuestion = async (e) => {
       e.preventDefault();
       const qClasses = Array.from(document.querySelectorAll('input[name="qClassCb"]:checked')).map(cb => cb.value);
+      const qSubject = document.getElementById('qSubject').value.trim();
       const qMonth = document.getElementById('qMonth').value, qPoints = document.getElementById('qPoints').value, qType = document.getElementById('qType').value, qDisplayMode = document.getElementById('qDisplayMode').value;
       const qText = window.quill.root.innerHTML, qTextPlain = window.quill.getText().trim();
+      
+      if (!qSubject) { window.customAlert("សូមបញ្ជាក់មុខវិជ្ជា!"); return; }
+      
       let opts = [], qCorrect = null;
       if(qType.includes('multiple_choice')) {
         opts = [document.getElementById('qOpt0').value, document.getElementById('qOpt1').value, document.getElementById('qOpt2').value, document.getElementById('qOpt3').value];
@@ -481,7 +485,7 @@
       const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
 
       try {
-        const payload = { teacherId: firebaseUser.uid, teacherName: myProfile.name || '', subject: myProfile.subject || '', type: qType, classLevel: qClasses, month: qMonth, text: qText, displayMode: qDisplayMode, options: opts, correctAnswer: qCorrect, points: qType === 'lesson' ? 0 : Number(qPoints), status: 'offline' };
+        const payload = { teacherId: firebaseUser.uid, teacherName: myProfile.name || '', subject: qSubject, type: qType, classLevel: qClasses, month: qMonth, text: qText, displayMode: qDisplayMode, options: opts, correctAnswer: qCorrect, points: qType === 'lesson' ? 0 : Number(qPoints), status: 'offline' };
         if (editingQuestionId) { payload.updatedAt = serverTimestamp(); await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'questions', editingQuestionId), payload); window.customAlert("កែប្រែសំណួរជោគជ័យ! (Offline)"); editingQuestionId = null; window.setTeacherTab('manage_q'); } 
         else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'questions'), payload); window.customAlert("បញ្ចូលសំណួរជោគជ័យ! (Offline)"); window.quill.setContents([{ insert: '\n' }]); if(qType.includes('multiple_choice')) { document.getElementById('qOpt0').value = ''; document.getElementById('qOpt1').value = ''; document.getElementById('qOpt2').value = ''; document.getElementById('qOpt3').value = ''; } }
       } catch (err) { window.customAlert("មានបញ្ហាក្នុងការរក្សាទុក។"); } finally { if(document.getElementById('btnSaveQuestion')) { btn.disabled = false; btn.innerHTML = editingQuestionId ? "ធ្វើបច្ចុប្បន្នភាពសំណួរ" : "រក្សាទុកសំណួរ"; } }
@@ -489,12 +493,16 @@
 
     window.editQuestion = (id) => {
       const q = questions.find(q => q.id === id); if(!q) return; if(q.teacherId !== firebaseUser.uid) { window.customAlert("អ្នកមិនមានសិទ្ធិទេ!"); return; }
+      const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
       editingQuestionId = id; activeTab = 'add_questions'; renderApp();
       let retryCount = 0;
       const fillForm = () => {
         if (window.quill && document.getElementById('qPoints')) {
           let determinedType = q.type || 'multiple_choice_single'; if(determinedType === 'multiple_choice') determinedType = 'multiple_choice_single';
           document.getElementById('qType').value = determinedType; window.toggleQType(determinedType);
+          
+          if(document.getElementById('qSubject')) document.getElementById('qSubject').value = q.subject || myProfile.subject || '';
+          
           document.getElementById('qPoints').value = q.points; document.getElementById('qMonth').value = q.month; if(document.getElementById('qDisplayMode')) document.getElementById('qDisplayMode').value = q.displayMode || 'fixed';
           window.quill.root.innerHTML = q.text;
           if(determinedType.includes('multiple_choice') && q.options) {
@@ -619,10 +627,10 @@
       if(selectEl.value === 'lesson') { tr.querySelector('.eq-points').value = 0; tr.querySelector('.eq-points').disabled = true; tr.querySelector('.eq-points').classList.add('bg-gray-100', 'opacity-50'); } else { tr.querySelector('.eq-points').disabled = false; tr.querySelector('.eq-points').classList.remove('bg-gray-100', 'opacity-50'); }
     };
 
-    window.addExcelRow = () => {
+    window.addExcelRow = (defaultSubj = '') => {
       const tbody = document.getElementById('excel-tbody'); if(!tbody) return;
       const tr = document.createElement('tr'); tr.className = 'excel-row bg-white hover:bg-blue-50 transition border-b border-gray-200';
-      tr.innerHTML = `<td class="p-1.5 border-r"><input type="text" class="w-16 p-1.5 border border-gray-300 rounded eq-class text-sm" placeholder="ឧ. 9,10"></td><td class="p-1.5 border-r"><select class="w-20 p-1.5 border border-gray-300 rounded eq-month text-sm">${months.map(m => `<option value="${m}">${m}</option>`).join('')}</select></td><td class="p-1.5 border-r"><select class="w-20 p-1.5 border border-gray-300 rounded eq-type text-sm" onchange="window.toggleExcelRowType(this)"><option value="multiple_choice_single">ជ្រើសរើស</option><option value="essay">សរសេរ</option><option value="lesson">មេរៀន</option></select></td><td class="p-1.5 border-r"><select class="w-16 p-1.5 border border-gray-300 rounded eq-display text-sm"><option value="fixed">Fixed</option><option value="random">Random</option></select></td><td class="p-1.5 border-r"><input type="number" class="w-12 p-1.5 border border-gray-300 rounded eq-points text-sm text-center" value="10" min="0"></td><td class="p-1.5 border-r"><textarea class="w-48 p-1.5 border border-gray-300 rounded eq-text text-sm resize-y" rows="1" placeholder="សំណួរ..."></textarea></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-opta text-sm" placeholder="A"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optb text-sm" placeholder="B"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optc text-sm" placeholder="C"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optd text-sm" placeholder="D"></td><td class="p-1.5 border-r"><select class="w-14 p-1.5 border border-gray-300 rounded eq-correct text-sm font-bold text-blue-600"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></td><td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded"><i class="fas fa-trash"></i></button></td>`;
+      tr.innerHTML = `<td class="p-1.5 border-r"><input type="text" class="w-16 p-1.5 border border-gray-300 rounded eq-class text-sm" placeholder="ឧ. 9,10"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-subject text-sm" value="${defaultSubj}" placeholder="មុខវិជ្ជា" required></td><td class="p-1.5 border-r"><select class="w-20 p-1.5 border border-gray-300 rounded eq-month text-sm">${months.map(m => `<option value="${m}">${m}</option>`).join('')}</select></td><td class="p-1.5 border-r"><select class="w-20 p-1.5 border border-gray-300 rounded eq-type text-sm" onchange="window.toggleExcelRowType(this)"><option value="multiple_choice_single">ជ្រើសរើស</option><option value="essay">សរសេរ</option><option value="lesson">មេរៀន</option></select></td><td class="p-1.5 border-r"><select class="w-16 p-1.5 border border-gray-300 rounded eq-display text-sm"><option value="fixed">Fixed</option><option value="random">Random</option></select></td><td class="p-1.5 border-r"><input type="number" class="w-12 p-1.5 border border-gray-300 rounded eq-points text-sm text-center" value="10" min="0"></td><td class="p-1.5 border-r"><textarea class="w-48 p-1.5 border border-gray-300 rounded eq-text text-sm resize-y" rows="1" placeholder="សំណួរ..."></textarea></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-opta text-sm" placeholder="A"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optb text-sm" placeholder="B"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optc text-sm" placeholder="C"></td><td class="p-1.5 border-r"><input type="text" class="w-20 p-1.5 border border-gray-300 rounded eq-optd text-sm" placeholder="D"></td><td class="p-1.5 border-r"><select class="w-14 p-1.5 border border-gray-300 rounded eq-correct text-sm font-bold text-blue-600"><option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option></select></td><td class="p-1.5 text-center"><button onclick="this.closest('tr').remove()" class="text-red-500 hover:text-red-700 bg-red-50 p-1.5 rounded"><i class="fas fa-trash"></i></button></td>`;
       tbody.appendChild(tr);
     };
 
@@ -635,13 +643,17 @@
         const txt = tr.querySelector('.eq-text').value.trim(); if(!txt) continue; 
         const cls = tr.querySelector('.eq-class').value.split(',').map(c => c.trim()).filter(c => c);
         if(cls.length === 0) { window.customAlert('មានសំណួរមិនទាន់បញ្ជាក់ថ្នាក់!'); btn.innerHTML = originalText; btn.disabled = false; return; }
+        
+        const subj = tr.querySelector('.eq-subject').value.trim();
+        if(!subj) { window.customAlert('មានសំណួរមិនទាន់បញ្ជាក់មុខវិជ្ជា!'); btn.innerHTML = originalText; btn.disabled = false; return; }
+        
         const typ = tr.querySelector('.eq-type').value; let opts = [], corr = null;
         if(typ.includes('multiple_choice')) { opts = [tr.querySelector('.eq-opta').value, tr.querySelector('.eq-optb').value, tr.querySelector('.eq-optc').value, tr.querySelector('.eq-optd').value]; corr = Number(tr.querySelector('.eq-correct').value); }
-        batchPromises.push(addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'questions'), { teacherId: firebaseUser.uid, teacherName: myProfile.name || '', subject: myProfile.subject || '', classLevel: cls, month: tr.querySelector('.eq-month').value, type: typ, displayMode: tr.querySelector('.eq-display').value, points: typ === 'lesson' ? 0 : (Number(tr.querySelector('.eq-points').value) || 10), text: txt, options: opts, correctAnswer: corr, status: 'offline', createdAt: serverTimestamp() }));
+        batchPromises.push(addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'questions'), { teacherId: firebaseUser.uid, teacherName: myProfile.name || '', subject: subj, classLevel: cls, month: tr.querySelector('.eq-month').value, type: typ, displayMode: tr.querySelector('.eq-display').value, points: typ === 'lesson' ? 0 : (Number(tr.querySelector('.eq-points').value) || 10), text: txt, options: opts, correctAnswer: corr, status: 'offline', createdAt: serverTimestamp() }));
         validCount++;
       }
       if(validCount === 0) { window.customAlert("វាយសំណួរយ៉ាងហោច១ជួរ!"); btn.innerHTML = originalText; btn.disabled = false; return; }
-      try { await Promise.all(batchPromises); window.customAlert(`រក្សាទុកជោគជ័យ ${validCount} សំណួរ!`); document.getElementById('excel-tbody').innerHTML = ''; window.addExcelRow(); window.addExcelRow(); window.addExcelRow(); } 
+      try { await Promise.all(batchPromises); window.customAlert(`រក្សាទុកជោគជ័យ ${validCount} សំណួរ!`); document.getElementById('excel-tbody').innerHTML = ''; window.addExcelRow(myProfile.subject || ''); window.addExcelRow(myProfile.subject || ''); window.addExcelRow(myProfile.subject || ''); } 
       catch(e) { window.customAlert('មានបញ្ហា!'); } finally { btn.innerHTML = originalText; btn.disabled = false; }
     };
 
@@ -724,6 +736,7 @@
       let rightPanelHtml = '';
       const myQuestions = questions.filter(q => q.teacherId === firebaseUser.uid);
       const myResults = results.filter(r => r.teacherId === firebaseUser.uid);
+      const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
 
       if (activeTab === 'grading_view' && gradingResultId) {
         const res = myResults.find(r => r.id === gradingResultId);
@@ -786,8 +799,8 @@
             ${editingQuestionId ? `<button onclick="window.cancelEdit()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-semibold transition text-sm">បោះបង់ការកែប្រែ</button>` : ''}
           </div>
           <form id="frmAddQuestion" onsubmit="window.handleSaveQuestion(event)" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div class="col-span-1 md:col-span-2">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div class="col-span-1 md:col-span-3 lg:col-span-2">
                 <label class="block text-gray-700 text-sm font-bold mb-2">សម្រាប់ថ្នាក់ទី (អាចជ្រើសរើសបានច្រើនថ្នាក់)</label>
                 <div class="flex flex-wrap gap-2 p-3 border rounded-lg bg-gray-50 min-h-[48px] items-center">
                   ${classes.map(c => `
@@ -798,6 +811,12 @@
                   `).join('')}
                 </div>
               </div>
+              
+              <div class="col-span-1">
+                <label class="block text-gray-700 text-sm font-bold mb-2">មុខវិជ្ជា <span class="text-red-500">*</span></label>
+                <input type="text" id="qSubject" value="${myProfile.subject || ''}" required class="w-full p-3 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 font-bold" placeholder="ឧ. គណិតវិទ្យា">
+              </div>
+
               <div>
                 <label class="block text-gray-700 text-sm font-bold mb-2">សម្រាប់ការប្រឡង</label>
                 <select id="qMonth" class="w-full p-3 border rounded-lg bg-gray-50">
@@ -805,7 +824,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2">របៀបបង្ហាញដល់សិស្ស</label>
+                <label class="block text-gray-700 text-sm font-bold mb-2">របៀបបង្ហាញ</label>
                 <select id="qDisplayMode" class="w-full p-3 border rounded-lg bg-green-50 text-green-800 font-bold border-green-200">
                   <option value="fixed">បង្ហាញជានិច្ច (Fixed)</option>
                   <option value="random">បង្ហាញចៃដន្យ (Random)</option>
@@ -888,12 +907,12 @@
           </div>
           <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
             <table class="w-full text-left border-collapse min-w-max">
-              <thead><tr class="bg-gray-100 text-gray-700 text-sm border-b border-gray-300"><th class="p-2 border-r font-bold text-center">ថ្នាក់</th><th class="p-2 border-r font-bold text-center">ខែ/ឆមាស</th><th class="p-2 border-r font-bold text-center">ប្រភេទ</th><th class="p-2 border-r font-bold text-center">របៀបបង្ហាញ</th><th class="p-2 border-r font-bold text-center">ពិន្ទុ</th><th class="p-2 border-r font-bold text-center">សំណួរ</th><th class="p-2 border-r font-bold text-center">A</th><th class="p-2 border-r font-bold text-center">B</th><th class="p-2 border-r font-bold text-center">C</th><th class="p-2 border-r font-bold text-center">D</th><th class="p-2 border-r font-bold text-center">ចម្លើយត្រូវ</th><th class="p-2 font-bold text-center"><i class="fas fa-cog"></i></th></tr></thead>
+              <thead><tr class="bg-gray-100 text-gray-700 text-sm border-b border-gray-300"><th class="p-2 border-r font-bold text-center">ថ្នាក់</th><th class="p-2 border-r font-bold text-center">មុខវិជ្ជា</th><th class="p-2 border-r font-bold text-center">ខែ/ឆមាស</th><th class="p-2 border-r font-bold text-center">ប្រភេទ</th><th class="p-2 border-r font-bold text-center">របៀបបង្ហាញ</th><th class="p-2 border-r font-bold text-center">ពិន្ទុ</th><th class="p-2 border-r font-bold text-center">សំណួរ</th><th class="p-2 border-r font-bold text-center">A</th><th class="p-2 border-r font-bold text-center">B</th><th class="p-2 border-r font-bold text-center">C</th><th class="p-2 border-r font-bold text-center">D</th><th class="p-2 border-r font-bold text-center">ចម្លើយត្រូវ</th><th class="p-2 font-bold text-center"><i class="fas fa-cog"></i></th></tr></thead>
               <tbody id="excel-tbody"></tbody>
             </table>
           </div>
           <div class="flex gap-3 justify-between flex-wrap">
-             <button onclick="window.addExcelRow()" class="bg-green-100 text-green-700 px-5 py-2.5 rounded-xl font-bold hover:bg-green-200 transition border border-green-300 flex items-center gap-2"><i class="fas fa-plus"></i> បន្ថែមជួរថ្មី</button>
+             <button onclick="window.addExcelRow('${myProfile.subject || ''}')" class="bg-green-100 text-green-700 px-5 py-2.5 rounded-xl font-bold hover:bg-green-200 transition border border-green-300 flex items-center gap-2"><i class="fas fa-plus"></i> បន្ថែមជួរថ្មី</button>
              <button id="btnSaveExcel" onclick="window.saveExcelTable()" class="bg-blue-600 text-white px-8 py-2.5 rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-save"></i> រក្សាទុកទាំងអស់ចូលប្រព័ន្ធ</button>
           </div>
         `;
@@ -931,7 +950,7 @@
               <thead>
                  <tr class="bg-gray-50 text-gray-600 border-b border-gray-200 text-sm">
                     <th class="p-4 font-bold">សិស្ស</th>
-                    <th class="p-4 font-bold">ថ្នាក់/ខែ</th>
+                    <th class="p-4 font-bold">មុខវិជ្ជា/ខែ</th>
                     ${!isLessonReport ? `
                     <th class="p-4 font-bold text-center">ពិន្ទុ</th>
                     <th class="p-4 font-bold text-center">ស្ថានភាព</th>
@@ -950,8 +969,8 @@
                   const readDate = r.timestamp && r.timestamp.toDate ? new Date(r.timestamp.toDate()).toLocaleString('km-KH', {dateStyle:'short', timeStyle:'short'}) : '';
                   return `
                   <tr class="border-b border-gray-100 hover:bg-blue-50 transition">
-                    <td class="p-4"><div class="font-bold text-gray-800">${r.studentName}</div><div class="text-xs text-gray-500">ID: ${r.studentId}</div></td>
-                    <td class="p-4"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold text-xs">ថ្នាក់ ${r.classLevel}</span><div class="text-xs text-gray-500 mt-1">${r.month}</div></td>
+                    <td class="p-4"><div class="font-bold text-gray-800">${r.studentName}</div><div class="text-xs text-gray-500">ID: ${r.studentId} | ថ្នាក់ ${r.classLevel}</div></td>
+                    <td class="p-4"><span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-semibold text-xs">${r.subject || 'ទូទៅ'}</span><div class="text-xs text-gray-500 mt-1">${r.month}</div></td>
                     ${!isLessonReport ? `
                     <td class="p-4 text-center"><span class="font-extrabold text-lg ${r.needsGrading ? 'text-gray-400' : 'text-blue-600'}">${r.score}/${r.totalPoints}</span></td>
                     <td class="p-4 text-center">${r.needsGrading ? `<span class="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-md text-xs font-bold border border-yellow-200"><i class="fas fa-clock mr-1"></i> រង់ចាំការកែ</span>` : `<span class="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold border border-green-200"><i class="fas fa-check mr-1"></i> កែរួចរាល់</span>`}</td>
@@ -1002,12 +1021,10 @@
                       <span class="font-bold text-gray-800">ថ្នាក់ទី: ${Array.isArray(q.classLevel) ? q.classLevel.join(', ') : q.classLevel}</span>
                       <div class="flex items-center gap-2 mt-1">
                         <span class="text-xs font-semibold bg-gray-200 text-gray-700 px-2 py-0.5 rounded">${q.month}</span>
+                        <span class="text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded border border-blue-200">${q.subject || 'ទូទៅ'}</span>
                         ${q.type !== 'lesson' ? `<span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${q.points} ពិន្ទុ</span>` : ''}
                         <span class="text-xs font-bold ${q.type === 'lesson' ? 'text-purple-600 bg-purple-50' : 'text-orange-600 bg-orange-50'} px-2 py-0.5 rounded uppercase">
                             ${q.type === 'essay' ? 'សរសេរ' : (q.type === 'lesson' ? 'មេរៀន' : 'ជ្រើសរើស')}
-                        </span>
-                        <span class="text-xs font-bold text-gray-500 bg-gray-100 border px-2 py-0.5 rounded uppercase">
-                            <i class="fas ${q.displayMode === 'random' ? 'fa-random' : 'fa-thumbtack'}"></i> ${q.displayMode === 'random' ? 'Random' : 'Fixed'}
                         </span>
                       </div>
                     </div>
@@ -1024,7 +1041,6 @@
           </div>
         `;
       } else if (activeTab === 'settings') {
-        const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
         rightPanelHtml = `
           <div class="flex justify-between items-center mb-6 border-b pb-4">
             <h3 class="text-xl text-gray-800 font-moul"><i class="fas fa-user-shield text-blue-600 mr-2"></i> កំណត់គណនី និងទិន្នន័យ</h3>
@@ -1242,8 +1258,6 @@
         }
       }
 
-      const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
-
       return `
         <div class="w-full px-2 sm:px-6 mx-auto mt-4 sm:mt-6 flex flex-col gap-4">
           <!-- Top Menu Bar -->
@@ -1302,6 +1316,8 @@
       } else if (userRole === 'teacher') {
         container.innerHTML = renderTeacher();
         
+        const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
+
         if (activeTab === 'add_questions') {
           setTimeout(() => {
             const qTextEl = document.getElementById('qText');
@@ -1317,9 +1333,9 @@
           setTimeout(() => {
             const tbody = document.getElementById('excel-tbody');
             if(tbody && tbody.children.length === 0) { 
-                window.addExcelRow(); 
-                window.addExcelRow(); 
-                window.addExcelRow(); 
+                window.addExcelRow(myProfile.subject || ''); 
+                window.addExcelRow(myProfile.subject || ''); 
+                window.addExcelRow(myProfile.subject || ''); 
             }
           }, 50);
         }
