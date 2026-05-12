@@ -56,6 +56,10 @@
             <i class="fas fa-eye" id="togglePassIcon"></i>
           </button>
         </div>
+        <!-- បន្ថែម Link ភ្លេចពាក្យសម្ងាត់នៅត្រង់នេះ -->
+        <div class="text-right mt-2">
+          <button type="button" id="forgotPassLink" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">ភ្លេចពាក្យសម្ងាត់គ្រូមែនទេ?</button>
+        </div>
       </div>
 
       <div id="errorBox" class="hidden bg-red-50 text-red-600 p-3 rounded-lg text-sm items-start gap-2 border border-red-100">
@@ -73,9 +77,33 @@
     </div>
   </div>
 
+  <!-- បន្ថែមផ្ទាំង Modal សម្រាប់វាយ Email សុំកំណត់ពាក្យសម្ងាត់ថ្មី -->
+  <div id="forgotPassModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden px-4">
+    <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-2xl max-w-sm w-full">
+      <div class="text-center mb-4 text-blue-600">
+        <i class="fas fa-envelope-open-text text-4xl"></i>
+      </div>
+      <h2 class="text-xl font-bold mb-2 text-center text-gray-800">កំណត់ពាក្យសម្ងាត់ឡើងវិញ</h2>
+      <p class="text-sm text-gray-600 mb-5 text-center">សូមបញ្ចូលអ៊ីមែលគណនីគ្រូរបស់អ្នក ដើម្បីទទួលបានតំណភ្ជាប់ (Link)។</p>
+      
+      <div class="mb-4">
+        <input type="email" id="resetEmail" class="w-full p-3.5 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 bg-gray-50 transition" placeholder="បញ្ចូលអ៊ីមែលរបស់អ្នក..." required>
+      </div>
+      
+      <div id="resetMsgBox" class="hidden mb-4 p-3 rounded-lg text-sm items-start gap-2 border"></div>
+      
+      <div class="flex gap-3 mt-6">
+        <button type="button" id="closeModalBtn" class="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl hover:bg-gray-300 transition">បិទចោល</button>
+        <button type="button" id="sendResetBtn" class="flex-1 bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition flex justify-center items-center gap-2">
+          ផ្ញើ Link <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- Firebase Setup ---
@@ -102,12 +130,11 @@
 
     // Check if already logged in (Auto Redirect)
     const checkExistingSession = (user) => {
-        if (user && !user.isAnonymous) {
-            // Teacher session exists in Firebase Auth
+        // Checking user.email accurately identifies a Teacher logged in with email/pass
+        if (user && user.email) {
             window.location.href = 'teacher.html';
             return true;
         } else if (localStorage.getItem('studentSession')) {
-            // Student session exists in LocalStorage
             window.location.href = 'student.html';
             return true;
         }
@@ -120,21 +147,32 @@
         document.getElementById('submitBtn').classList.add('opacity-50', 'cursor-not-allowed');
 
         try {
-            // Check auth state
+            // MANDATORY RULE: Authenticate properly BEFORE checking state or loading data
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (err) {
+            console.error("Initial Auth Error:", err);
+        }
+
+        try {
+            // Check auth state and load data
             onAuthStateChanged(auth, (user) => {
                 if (checkExistingSession(user)) return;
                 
-                // If not logged in, authenticate anonymously to fetch student data
-                if (!user) {
-                    signInAnonymously(auth).catch(console.error);
-                } else {
-                    loadStudentsData();
+                // Once user is authenticated (anonymously or via custom token), load data
+                if (user) {
+                    loadStudentsData(user);
                 }
             });
-        } catch (err) { console.error("Auth Error:", err); }
+        } catch (err) { console.error("Auth Listener Error:", err); }
     };
 
-    const loadStudentsData = () => {
+    const loadStudentsData = (user) => {
+        if (!user) return; // Guard clause
+
         const sCollection = collection(db, 'artifacts', appId, 'public', 'data', 'students');
         onSnapshot(query(sCollection), (snapshot) => {
             studentsData = snapshot.docs.map(doc => doc.data());
@@ -193,8 +231,7 @@
             // --- Teacher Login Flow ---
             try {
                 await signInWithEmailAndPassword(auth, idInput.toLowerCase(), passInput);
-                // Redirect will be handled by onAuthStateChanged, or force it:
-                window.location.href = 'teacher.html';
+                // Redirect will be handled by onAuthStateChanged
             } catch (error) {
                 showError('អ៊ីមែល ឬ លេខសម្ងាត់គ្រូមិនត្រឹមត្រូវទេ!');
                 btn.innerHTML = originalText;
@@ -227,6 +264,79 @@
             }
         }
     });
+
+    // --- មុខងារកំណត់ពាក្យសម្ងាត់ឡើងវិញ (Forgot Password Logic) ---
+    const modal = document.getElementById('forgotPassModal');
+    const forgotLink = document.getElementById('forgotPassLink');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const sendBtn = document.getElementById('sendResetBtn');
+    const resetEmailInput = document.getElementById('resetEmail');
+    const resetMsgBox = document.getElementById('resetMsgBox');
+
+    // បើកផ្ទាំង Modal
+    forgotLink.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        resetMsgBox.classList.add('hidden');
+        resetEmailInput.value = '';
+    });
+
+    // បិទផ្ទាំង Modal
+    closeBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+    });
+
+    // ចុចផ្ញើ Email
+    sendBtn.addEventListener('click', async () => {
+        const email = resetEmailInput.value.trim();
+        if (!email) {
+            showResetMsg('សូមបញ្ចូលអ៊ីមែលសិន!', 'error');
+            return;
+        }
+
+        const originalBtnHTML = sendBtn.innerHTML;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> កំពុងផ្ញើ...';
+        sendBtn.disabled = true;
+
+        try {
+            await sendPasswordResetEmail(auth, email);
+            showResetMsg('តំណភ្ជាប់ត្រូវបានផ្ញើ! សូមចូលពិនិត្យ Email (ឬក្នុង Spam folder)។', 'success');
+            resetEmailInput.value = '';
+            
+            // បិទ Modal ដោយស្វ័យប្រវត្តិបន្ទាប់ពី 10 វិនាទី (10000 មិល្លីវិនាទី)
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                resetMsgBox.classList.add('hidden'); // លាក់សារចោលពេលវាបិទ
+            }, 10000);
+
+        } catch (error) {
+            let errorText = 'មានបញ្ហាក្នុងការផ្ញើ។ សូមព្យាយាមម្តងទៀត!';
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-email') {
+                errorText = 'អ៊ីមែលមិនត្រឹមត្រូវ ឬមិនមានគណនីប្រើប្រាស់អ៊ីមែលនេះទេ!';
+            }
+            showResetMsg(errorText, 'error');
+            
+            // លាក់សារ Error ចោលបន្ទាប់ពី 10 វិនាទី (តែមិនបិទ Modal ទេ ដើម្បីឲ្យគាត់វាយម្តងទៀត)
+            setTimeout(() => {
+                resetMsgBox.classList.add('hidden');
+            }, 10000);
+        } finally {
+            sendBtn.innerHTML = originalBtnHTML;
+            sendBtn.disabled = false;
+        }
+    });
+
+    // បង្ហាញសារជូនដំណឹងក្នុងផ្ទាំង Modal
+    function showResetMsg(msg, type) {
+        resetMsgBox.classList.remove('hidden', 'bg-red-50', 'text-red-600', 'border-red-100', 'bg-green-50', 'text-green-600', 'border-green-100');
+        resetMsgBox.innerHTML = '';
+        if (type === 'error') {
+            resetMsgBox.classList.add('bg-red-50', 'text-red-600', 'border-red-100', 'flex');
+            resetMsgBox.innerHTML = `<i class="fas fa-exclamation-circle mt-0.5"></i> <span>${msg}</span>`;
+        } else {
+            resetMsgBox.classList.add('bg-green-50', 'text-green-600', 'border-green-100', 'flex');
+            resetMsgBox.innerHTML = `<i class="fas fa-check-circle mt-0.5"></i> <span>${msg}</span>`;
+        }
+    }
 
     initApp();
   </script>
