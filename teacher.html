@@ -294,16 +294,19 @@
     // Teacher State
     let activeTab = 'add_questions';
     let reportType = 'exam'; 
-    let repClass = 'All';
-    let repMonth = 'All';
-    let mqClass = 'All'; 
-    let mqMonth = 'All'; 
+    // កំណត់ជម្រើសដើមជា Blank ដើម្បីអោយទំព័របើកមកលឿន
+    let repClass = ''; 
+    let repMonth = ''; 
+    let mqClass = ''; 
+    let mqMonth = ''; 
     let editingQuestionId = null;
     let gradingResultId = null; 
     
     let isStudentModalOpen = false;
     let editingStudentData = null;
     let isTeacherPassModalOpen = false;
+    let isDeleteAuthModalOpen = false;
+    let deleteAuthCount = 0;
     
     let globalSettings = { cardBgUrl: 'https://i.imgur.com/s46369v.png', sealImageUrl: '' };
     let classes = ["7", "8", "9", "10", "11", "12"];
@@ -587,6 +590,55 @@
     window.openTeacherPassModal = () => { isTeacherPassModalOpen = true; renderApp(); };
     window.closeTeacherPassModal = () => { isTeacherPassModalOpen = false; renderApp(); };
 
+    window.openDeleteAuthModal = () => {
+        if (repClass === '' || repMonth === '') {
+            window.customAlert("សូមជ្រើសរើសថ្នាក់ និងខែជាមុនសិន!");
+            return;
+        }
+
+        const isLessonReport = reportType === 'lesson';
+        const filteredResults = results.filter(r => r.teacherId === firebaseUser.uid && (repClass === 'All' || String(r.classLevel) === String(repClass)) && (repMonth === 'All' || r.month === repMonth) && (isLessonReport ? r.isLesson : !r.isLesson));
+        
+        if (filteredResults.length === 0) {
+            window.customAlert("គ្មានទិន្នន័យសម្រាប់លុបទេ!");
+            return;
+        }
+        deleteAuthCount = filteredResults.length;
+        isDeleteAuthModalOpen = true;
+        renderApp();
+    };
+
+    window.closeDeleteAuthModal = () => { isDeleteAuthModalOpen = false; renderApp(); };
+
+    window.confirmDeleteFiltered = async (e) => {
+        e.preventDefault();
+        const pass = document.getElementById('delAuthPass').value;
+        const btn = e.target.querySelector('button[type="submit"]');
+        const origTxt = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងផ្ទៀងផ្ទាត់...';
+        btn.disabled = true;
+
+        try {
+            await signInWithEmailAndPassword(auth, firebaseUser.email, pass);
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងលុប...';
+            
+            const isLessonReport = reportType === 'lesson';
+            const filteredResults = results.filter(r => r.teacherId === firebaseUser.uid && (repClass === 'All' || String(r.classLevel) === String(repClass)) && (repMonth === 'All' || r.month === repMonth) && (isLessonReport ? r.isLesson : !r.isLesson));
+            
+            const deletePromises = filteredResults.map(r => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'results', r.id)));
+            await Promise.all(deletePromises);
+            
+            window.customAlert(`លុបទិន្នន័យចំនួន ${filteredResults.length} បានជោគជ័យ!`, () => {
+                window.closeDeleteAuthModal();
+            });
+        } catch(err) {
+            window.customAlert('ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ!');
+            btn.innerHTML = origTxt; 
+            btn.disabled = false;
+        }
+    };
+
     window.printStudentList = () => {
       const filterClass = document.getElementById('filterStdClass').value, query = document.getElementById('searchStudent').value.toLowerCase();
       const filtered = [...studentsData].sort((a, b) => {
@@ -604,6 +656,11 @@
     };
 
     window.printScoreReport = () => {
+      if (repClass === '' || repMonth === '') {
+          window.customAlert("សូមជ្រើសរើសថ្នាក់ និងខែជាមុនសិន!");
+          return;
+      }
+        
       const isLessonReport = reportType === 'lesson', filterClass = document.getElementById('repClass').value, filterMonth = document.getElementById('repMonth').value;
       const filtered = results.filter(r => r.teacherId === firebaseUser.uid && (filterClass === 'All' || String(r.classLevel) === String(filterClass)) && (filterMonth === 'All' || r.month === filterMonth) && (isLessonReport ? r.isLesson : !r.isLesson)).sort((a, b) => {
         const numA = parseInt((a.classLevel || '').replace(/[^0-9]/g, '')) || 0, numB = parseInt((b.classLevel || '').replace(/[^0-9]/g, '')) || 0;
@@ -734,6 +791,7 @@
 
     function renderTeacher() {
       let rightPanelHtml = '';
+      let globalModalsHtml = '';
       const myQuestions = questions.filter(q => q.teacherId === firebaseUser.uid);
       const myResults = results.filter(r => r.teacherId === firebaseUser.uid);
       const myProfile = teachersData.find(t => t.uid === firebaseUser.uid) || {};
@@ -918,7 +976,7 @@
         `;
       } else if (activeTab === 'reports') {
         const isLessonReport = reportType === 'lesson';
-        const filteredResults = myResults.filter(r => 
+        const filteredResults = (repClass === '' || repMonth === '') ? [] : myResults.filter(r => 
            (repClass === 'All' || String(r.classLevel) === String(repClass)) && 
            (repMonth === 'All' || r.month === repMonth) &&
            (isLessonReport ? r.isLesson : !r.isLesson)
@@ -927,9 +985,14 @@
         rightPanelHtml = `
           <div class="flex justify-between items-center mb-6 border-b pb-4 flex-wrap gap-4">
             <h3 class="text-xl text-gray-800 font-moul"><i class="fas fa-chart-bar text-blue-600 mr-2"></i> របាយការណ៍ពិន្ទុ និងមេរៀន</h3>
-            <button onclick="window.printScoreReport()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-50 transition shadow-sm flex items-center gap-2">
-              <i class="fas fa-print text-blue-600"></i> បោះពុម្ពរបាយការណ៍
-            </button>
+            <div class="flex gap-2 flex-wrap">
+              <button onclick="window.openDeleteAuthModal()" class="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-xl font-bold hover:bg-red-100 transition shadow-sm flex items-center gap-2">
+                <i class="fas fa-trash-alt"></i> លុបតាម Filter
+              </button>
+              <button onclick="window.printScoreReport()" class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-xl font-bold hover:bg-gray-50 transition shadow-sm flex items-center gap-2">
+                <i class="fas fa-print text-blue-600"></i> បោះពុម្ពរបាយការណ៍
+              </button>
+            </div>
           </div>
 
           <div class="flex mb-5 bg-gray-100 p-1 rounded-xl w-full max-w-sm mx-auto sm:mx-0">
@@ -942,9 +1005,24 @@
           </div>
 
           <div class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
-            <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមថ្នាក់</label><select id="repClass" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${repClass==='All'?'selected':''}>គ្រប់ថ្នាក់ទាំងអស់</option>${classes.map(c=>`<option value="${c}" ${repClass===c?'selected':''}>ថ្នាក់ទី ${c}</option>`).join('')}</select></div>
-            <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមខែ</label><select id="repMonth" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${repMonth==='All'?'selected':''}>គ្រប់ខែទាំងអស់</option>${months.map(m=>`<option value="${m}" ${repMonth===m?'selected':''}>${m}</option>`).join('')}</select></div>
+            <div class="flex-1">
+               <label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមថ្នាក់</label>
+               <select id="repClass" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm">
+                  <option value="" disabled ${repClass === '' ? 'selected' : ''}>ជ្រើសរើសថ្នាក់...</option>
+                  <option value="All" ${repClass === 'All' ? 'selected' : ''}>គ្រប់ថ្នាក់ទាំងអស់</option>
+                  ${classes.map(c => `<option value="${c}" ${repClass === c ? 'selected' : ''}>ថ្នាក់ទី ${c}</option>`).join('')}
+               </select>
+            </div>
+            <div class="flex-1">
+               <label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមខែ</label>
+               <select id="repMonth" onchange="window.handleReportFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm">
+                  <option value="" disabled ${repMonth === '' ? 'selected' : ''}>ជ្រើសរើសខែ...</option>
+                  <option value="All" ${repMonth === 'All' ? 'selected' : ''}>គ្រប់ខែទាំងអស់</option>
+                  ${months.map(m => `<option value="${m}" ${repMonth === m ? 'selected' : ''}>${m}</option>`).join('')}
+               </select>
+            </div>
           </div>
+          
           <div class="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
             <table class="w-full text-left border-collapse">
               <thead>
@@ -984,13 +1062,13 @@
                       </div>
                     </td>
                   </tr>`;
-                }).join('') : `<tr><td colspan="${!isLessonReport ? 6 : 4}" class="p-8 text-center text-gray-500"><i class="fas fa-folder-open text-3xl mb-2 text-gray-300"></i><br>មិនទាន់មានទិន្នន័យទេ...</td></tr>`}
+                }).join('') : `<tr><td colspan="${!isLessonReport ? 6 : 4}" class="p-8 text-center text-gray-500"><i class="fas fa-folder-open text-3xl mb-2 text-gray-300"></i><br>${(repClass === '' || repMonth === '') ? 'សូមជ្រើសរើសថ្នាក់ និងខែជាមុនសិនដើម្បីមើលទិន្នន័យ...' : 'មិនមានទិន្នន័យទេ...'}</td></tr>`}
               </tbody>
             </table>
           </div>
         `;
       } else if (activeTab === 'manage_q') {
-        const filteredMQ = myQuestions.filter(q => {
+        const filteredMQ = (mqClass === '' || mqMonth === '') ? [] : myQuestions.filter(q => {
           const qClasses = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
           const matchClass = mqClass === 'All' || qClasses.includes(String(mqClass));
           const matchMonth = mqMonth === 'All' || q.month === mqMonth;
@@ -1003,8 +1081,22 @@
           </div>
           
           <div class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200 shadow-sm">
-            <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមថ្នាក់</label><select id="mqClass" onchange="window.handleMQFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${mqClass==='All'?'selected':''}>គ្រប់ថ្នាក់ទាំងអស់</option>${classes.map(c=>`<option value="${c}" ${mqClass===c?'selected':''}>ថ្នាក់ទី ${c}</option>`).join('')}</select></div>
-            <div class="flex-1"><label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមខែ</label><select id="mqMonth" onchange="window.handleMQFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm"><option value="All" ${mqMonth==='All'?'selected':''}>គ្រប់ខែទាំងអស់</option>${months.map(m=>`<option value="${m}" ${mqMonth===m?'selected':''}>${m}</option>`).join('')}</select></div>
+            <div class="flex-1">
+               <label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមថ្នាក់</label>
+               <select id="mqClass" onchange="window.handleMQFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm">
+                  <option value="" disabled ${mqClass === '' ? 'selected' : ''}>ជ្រើសរើសថ្នាក់...</option>
+                  <option value="All" ${mqClass === 'All' ? 'selected' : ''}>គ្រប់ថ្នាក់ទាំងអស់</option>
+                  ${classes.map(c => `<option value="${c}" ${mqClass === c ? 'selected' : ''}>ថ្នាក់ទី ${c}</option>`).join('')}
+               </select>
+            </div>
+            <div class="flex-1">
+               <label class="block text-gray-600 text-sm font-bold mb-1">ត្រងតាមខែ</label>
+               <select id="mqMonth" onchange="window.handleMQFilter()" class="w-full p-2.5 border border-gray-300 rounded-lg bg-white shadow-sm">
+                  <option value="" disabled ${mqMonth === '' ? 'selected' : ''}>ជ្រើសរើសខែ...</option>
+                  <option value="All" ${mqMonth === 'All' ? 'selected' : ''}>គ្រប់ខែទាំងអស់</option>
+                  ${months.map(m => `<option value="${m}" ${mqMonth === m ? 'selected' : ''}>${m}</option>`).join('')}
+               </select>
+            </div>
           </div>
 
           <div class="space-y-4">
@@ -1037,7 +1129,7 @@
                 </div>
                 <div class="ql-editor p-0 bg-transparent border-none text-gray-700 max-h-24 overflow-hidden mask-bottom">${q.text}</div>
               </div>`).join('')}
-            ${filteredMQ.length === 0 ? `<div class="text-center p-8 bg-gray-50 rounded-xl border border-dashed"><i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">មិនមានសំណួរតាមការស្វែងរកទេ...</p></div>` : ''}
+            ${filteredMQ.length === 0 ? `<div class="text-center p-8 bg-gray-50 rounded-xl border border-dashed"><i class="fas fa-folder-open text-4xl text-gray-300 mb-3"></i><p class="text-gray-500">${(mqClass === '' || mqMonth === '') ? 'សូមជ្រើសរើសថ្នាក់ និងខែជាមុនសិនដើម្បីមើលទិន្នន័យ...' : 'មិនមានសំណួរតាមការស្វែងរកទេ...'}</p></div>` : ''}
           </div>
         `;
       } else if (activeTab === 'settings') {
@@ -1130,40 +1222,6 @@
               <span class="text-sm font-bold text-gray-500 uppercase">ថ្នាក់សរុប</span>
             </div>
           </div>
-          
-          ${isTeacherPassModalOpen ? `
-            <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-              <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
-                <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
-                  <h3 class="text-xl font-moul text-blue-800"><i class="fas fa-key text-blue-600 mr-2"></i> ប្តូរពាក្យសម្ងាត់គណនីគ្រូ</h3>
-                  <button onclick="window.closeTeacherPassModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="p-6">
-                  <form onsubmit="window.saveTeacherPassword(event)" class="space-y-4">
-                    <div>
-                      <label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
-                      <div class="relative">
-                        <input type="password" id="newTPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មី (យ៉ាងហោច ៦ ខ្ទង់)">
-                        <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('newTPass', this)"></i>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="block text-gray-700 text-sm font-bold mb-1">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
-                      <div class="relative">
-                        <input type="password" id="confirmTPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីម្តងទៀត">
-                        <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('confirmTPass', this)"></i>
-                      </div>
-                    </div>
-                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
-                      <button type="button" onclick="window.closeTeacherPassModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button>
-                      <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-save"></i> រក្សាទុក</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-            <style>@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }</style>
-          ` : ''}
         `;
       } else if (activeTab === 'manage_students') {
         const sortedStudents = [...studentsData].sort((a, b) => {
@@ -1206,11 +1264,76 @@
             </table>
           </div>
         `;
-        
-        if (isStudentModalOpen) {
-           const s = editingStudentData || { ID:'', FNAME:'', LNAME:'', GEN:'ប្រុស', YYYY:'', CLASS:'', YEAR:'', PhotoURL:'', PASSWORD:'' };
-           rightPanelHtml += `
-             <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+      }
+
+      // --- Modals Global ---
+      globalModalsHtml = '';
+      if (isTeacherPassModalOpen) {
+          globalModalsHtml += `
+            <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+              <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
+                <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
+                  <h3 class="text-xl font-moul text-blue-800"><i class="fas fa-key text-blue-600 mr-2"></i> ប្តូរពាក្យសម្ងាត់គណនីគ្រូ</h3>
+                  <button onclick="window.closeTeacherPassModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6">
+                  <form onsubmit="window.saveTeacherPassword(event)" class="space-y-4">
+                    <div>
+                      <label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
+                      <div class="relative">
+                        <input type="password" id="newTPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មី (យ៉ាងហោច ៦ ខ្ទង់)">
+                        <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('newTPass', this)"></i>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-gray-700 text-sm font-bold mb-1">បញ្ជាក់ពាក្យសម្ងាត់ថ្មី <span class="text-red-500">*</span></label>
+                      <div class="relative">
+                        <input type="password" id="confirmTPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500" placeholder="វាយពាក្យសម្ងាត់ថ្មីម្តងទៀត">
+                        <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-blue-500 transition" onclick="window.togglePassword('confirmTPass', this)"></i>
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                      <button type="button" onclick="window.closeTeacherPassModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button>
+                      <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-save"></i> រក្សាទុក</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          `;
+      }
+      if (isDeleteAuthModalOpen) {
+          globalModalsHtml += `
+            <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+              <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-[fadeIn_0.2s_ease-out]">
+                <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-red-50 to-white">
+                  <h3 class="text-xl font-moul text-red-800"><i class="fas fa-exclamation-triangle text-red-600 mr-2"></i> បញ្ជាក់ការលុប</h3>
+                  <button onclick="window.closeDeleteAuthModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="p-6">
+                  <p class="text-sm text-gray-600 mb-4">តើអ្នកពិតជាចង់លុបទិន្នន័យ (<strong>${deleteAuthCount} កំណត់ត្រា</strong>) ដែលបានត្រងនេះមែនទេ? ការលុបនេះមិនអាចត្រឡប់វិញបានទេ។ សូមវាយពាក្យសម្ងាត់ដើម្បីបញ្ជាក់៖</p>
+                  <form onsubmit="window.confirmDeleteFiltered(event)" class="space-y-4">
+                    <div>
+                      <label class="block text-gray-700 text-sm font-bold mb-1">ពាក្យសម្ងាត់គណនីគ្រូ <span class="text-red-500">*</span></label>
+                      <div class="relative">
+                        <input type="password" id="delAuthPass" required class="w-full p-3 pr-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500" placeholder="••••••••">
+                        <i class="fas fa-eye absolute right-3 top-3.5 text-gray-400 cursor-pointer hover:text-red-500 transition" onclick="window.togglePassword('delAuthPass', this)"></i>
+                      </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                      <button type="button" onclick="window.closeDeleteAuthModal()" class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition">បោះបង់</button>
+                      <button type="submit" class="px-6 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition shadow-md flex items-center gap-2"><i class="fas fa-trash"></i> លុបទាំងអស់</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          `;
+      }
+      if (isStudentModalOpen) {
+          const s = editingStudentData || { ID:'', FNAME:'', LNAME:'', GEN:'ប្រុស', YYYY:'', CLASS:'', YEAR:'', PhotoURL:'', PASSWORD:'' };
+          globalModalsHtml += `
+            <div class="fixed inset-0 bg-black bg-opacity-60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-[fadeIn_0.2s_ease-out]">
                  <div class="p-5 border-b flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
                    <h3 class="text-xl font-moul text-blue-800"><i class="fas ${s.ID ? 'fa-user-edit text-orange-500' : 'fa-user-plus text-green-500'} mr-2"></i> ${s.ID ? 'កែប្រែព័ត៌មានសិស្ស' : 'បន្ថែមសិស្សថ្មី'}</h3>
@@ -1253,9 +1376,8 @@
                    </form>
                  </div>
                </div>
-             </div>
-           `;
-        }
+            </div>
+          `;
       }
 
       return `
@@ -1304,6 +1426,8 @@
             ${rightPanelHtml}
           </div>
         </div>
+        ${globalModalsHtml}
+        <style>@keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }</style>
       `;
     }
 
