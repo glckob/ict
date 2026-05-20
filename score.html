@@ -744,7 +744,7 @@
                   
                   let tMax = 0;
                   subs.forEach(su => {
-                      const sc = scoresData.find(s => String(s.student_id) === String(stu.id) && String(s.subject_id) === String(su.id) && String(sc.exam_id) === String(ex.id));
+                      const sc = scoresData.find(s => String(s.student_id) === String(stu.id) && String(s.subject_id) === String(su.id) && String(s.exam_id) === String(ex.id));
                       const scoreVal = (sc && sc.score !== '' && sc.score !== null && sc.score !== undefined) ? Number(sc.score) : '';
                       row.push(scoreVal);
                       if(scoreVal !== '') tMax += scoreVal;
