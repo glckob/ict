@@ -112,12 +112,37 @@
     </div>
   </div>
 
+  <!-- Exam Terms Modal -->
+  <div id="examTermsModal" class="fixed inset-0 bg-black bg-opacity-60 z-[100] hidden items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col relative animate-[fadeIn_0.2s_ease-out]">
+      <div class="p-5 border-b bg-blue-50 text-blue-800 font-moul font-bold flex items-center gap-2">
+          <i class="fas fa-clipboard-list"></i> លក្ខខណ្ឌ និងបទបញ្ជាផ្ទៃក្នុង
+      </div>
+      <div class="p-6 text-gray-700 space-y-4">
+          <div class="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-sm font-bold flex items-start gap-2">
+              <i class="fas fa-exclamation-triangle mt-0.5"></i>
+              <p>បម្រាម៖ ហាមចាកចេញពីផ្ទាំងប្រឡង (Refresh, ថយក្រោយ ឬបិទកម្មវិធី) កំឡុងពេលប្រឡងជាដាច់ខាត បើពុំនោះទេប្រព័ន្ធនឹងបញ្ជូនវិញ្ញាសារបស់អ្នកដោយស្វ័យប្រវត្តិ។</p>
+          </div>
+          <ul class="list-disc list-inside space-y-2 text-sm ml-2 font-medium">
+              <li>សូមអានសំណួរឲ្យបានច្បាស់លាស់មុននឹងជ្រើសរើសចម្លើយ។</li>
+              <li>ចម្លើយរបស់អ្នកនឹងត្រូវបានរក្សាទុកដោយស្វ័យប្រវត្តិក្នុងប្រព័ន្ធ។</li>
+              <li>ត្រូវប្រាកដថាអ្នកមានអ៊ីនធឺណិតដើរស្រួលមុនពេលចាប់ផ្តើម។</li>
+              <li>នៅពេលអ្នកចុច "បញ្ជូនចម្លើយ" អ្នកនឹងមិនអាចកែប្រែបានទៀតទេ។</li>
+          </ul>
+      </div>
+      <div class="p-4 border-t flex justify-end gap-3 bg-gray-50">
+          <button onclick="window.closeExamTerms()" class="px-5 py-2.5 bg-gray-200 text-gray-800 rounded-xl font-bold hover:bg-gray-300 transition">មិនព្រម (ថយក្រោយ)</button>
+          <button id="btnAgreeStart" class="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center gap-2"><i class="fas fa-play-circle"></i> ព្រមចូលធ្វើវិញ្ញាសា</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
-    import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, serverTimestamp, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
-    // --- Data URIs for Fallback Images (ការពារកុំឲ្យជាប់ Loading Titlebar) ---
+    // --- Data URIs for Fallback Images ---
     const fallbackImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='16' fill='%239ca3af'%3ENo Photo%3C/text%3E%3C/svg%3E";
     const fallbackAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23e5e7eb'/%3E%3Cpath d='M20 20a6 6 0 100-12 6 6 0 000 12zm-8 10c0-4.418 3.582-8 8-8s8 3.582 8 8v2H12v-2z' fill='%239ca3af'/%3E%3C/svg%3E";
 
@@ -200,7 +225,7 @@
     let activeExamQuestions = null;
     let activeExamContext = null; 
     let studentAnswers = {};
-    window.isSubmitting = false; // Flag សម្រាប់ដឹងថាកំពុងបញ្ជូនពិតប្រាកដ ឬបិទទំព័រ
+    window.isSubmitting = false; 
 
     // Helper: Get Subject
     function getSubject(itemObj, teacherId) {
@@ -210,9 +235,19 @@
         return 'ទូទៅ';
     }
 
+    // Helper: Shuffle Array
+    function shuffleArray(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex > 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
     // --- ប្រព័ន្ធការពារការចាកចេញ (Anti-Cheat) ---
     window.addEventListener('beforeunload', function (e) {
-        // បើសិស្សកំពុងប្រឡង (មិនមែនមេរៀន) ហើយមិនមែនជាការចុចបញ្ជូនពិតប្រាកដទេ
         if (activeExamContext && !activeExamContext.isLesson && !window.isSubmitting) {
             e.preventDefault();
             e.returnValue = 'អ្នកកំពុងប្រឡង! ប្រសិនបើអ្នកចាកចេញ វិញ្ញាសានឹងត្រូវបញ្ជូនដោយស្វ័យប្រវត្តិ។';
@@ -260,7 +295,6 @@
         }
       }, (err) => console.error(err));
 
-      // រង់ចាំទិន្នន័យទាញយកចប់ ទើបឆែកមើលក្រែងលោសិស្សមានបោះបង់ការប្រឡង
       setTimeout(() => { 
           loadingData = false; 
           renderApp(); 
@@ -274,20 +308,17 @@
         if (window.isHandlingAbandon) return;
         const lockedStr = localStorage.getItem('active_exam_lock');
         
-        // ប្រសិនបើមាន Lock មានន័យថាសិស្សបាន Reload ឬចេញកណ្តាលទី
         if (lockedStr && currentUser && questions.length > 0) {
             window.isHandlingAbandon = true;
             try {
                 const ctx = JSON.parse(lockedStr);
                 
-                // ផ្ទៀងផ្ទាត់សិស្ស
                 if (ctx.studentId !== currentUser.ID) {
                     localStorage.removeItem('active_exam_lock');
                     window.isHandlingAbandon = false;
                     return;
                 }
                 
-                // ឆែកមើលក្រែងលោបានបញ្ជូនចូល Results រួចហើយ
                 const existingRes = results.find(r => r.studentId === ctx.studentId && r.teacherId === ctx.teacherId && r.month === ctx.month && r.subject === ctx.subject && !r.isLesson);
                 if (existingRes) {
                     localStorage.removeItem('active_exam_lock');
@@ -295,14 +326,12 @@
                     return;
                 }
 
-                // បង្ហាញ UI ថាកំពុងបញ្ជូនអូតូ
                 document.getElementById('app-container').innerHTML = `
                    <div class="flex flex-col items-center justify-center h-[60vh]">
                       <div class="loader mb-4 border-red-200 border-top-red-600"></div>
                       <p class="text-red-600 font-bold text-lg text-center px-4">ប្រព័ន្ធកំពុងបញ្ជូនវិញ្ញាសាដែលអ្នកបានចាកចេញកណ្តាលទី...</p>
                    </div>`;
 
-                // ទាញយកសំណួរពាក់ព័ន្ធ
                 const myClassStr = String(currentUser.CLASS).trim();
                 let examQuestions = questions.filter(q => {
                      const classList = Array.isArray(q.classLevel) ? q.classLevel.map(String) : [String(q.classLevel)];
@@ -310,12 +339,10 @@
                      return q.teacherId === ctx.teacherId && q.month === ctx.month && q.subject === ctx.subject && q.type !== 'lesson' && isMatchClass && q.status === 'online';
                 });
 
-                // ទាញយកចម្លើយដែល Save Auto ក្នុង Profile របស់ Browser
                 const answerKey = `exam_ans_${ctx.studentId}_${ctx.teacherId}_${ctx.month}_${encodeURIComponent(ctx.subject)}_false`;
                 const savedAnswersStr = localStorage.getItem(answerKey);
                 let savedAnswers = savedAnswersStr ? JSON.parse(savedAnswersStr) : {};
 
-                // គណនាពិន្ទុ
                 let totalScore = 0; let totalPoints = 0; let needsGrading = false; let qScores = {};
 
                 examQuestions.forEach(q => {
@@ -348,13 +375,11 @@
                     questionScores: qScores,
                     needsGrading: needsGrading,
                     timestamp: serverTimestamp(),
-                    autoSubmitted: true // សម្គាល់ថាជាការបញ្ជូនព្រោះចាកចេញ
+                    autoSubmitted: true 
                 };
 
-                // បញ្ជូនទៅ Firestore
                 await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), examData);
                 
-                // លុបសំរាមចេញពី Browser
                 localStorage.removeItem('active_exam_lock');
                 localStorage.removeItem(answerKey);
                 
@@ -443,13 +468,31 @@
         }).catch(err => { window.customAlert("មានបញ្ហាក្នុងការថតកាត។"); btn.innerHTML = origHtml; btn.disabled = false; });
     };
 
-    // Switch Dashboard View
     window.setDashboardView = (view) => {
         activeDashboardView = view;
         renderApp();
     };
 
-    // --- Logic ប្រព័ន្ធប្រឡង (លែងមាន Timer ទៀតហើយ) ---
+    window.openExamTerms = (examKeyStr) => {
+        const modal = document.getElementById('examTermsModal');
+        const btnAgree = document.getElementById('btnAgreeStart');
+        
+        btnAgree.onclick = () => {
+            window.closeExamTerms();
+            window.startExam(examKeyStr);
+        };
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    };
+
+    window.closeExamTerms = () => {
+        const modal = document.getElementById('examTermsModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    };
+
+    // --- Logic ប្រព័ន្ធប្រឡង (លុបម៉ោងចោល) ---
     window.startExam = async (examKeyStr) => {
         document.getElementById('app-container').innerHTML = `
            <div class="flex flex-col items-center justify-center h-[60vh]">
@@ -526,7 +569,7 @@
             });
         }
 
-        window.isSubmitting = false; // Reset flag
+        window.isSubmitting = false; 
         activeExamQuestions = randomizedQuestions;
         activeExamContext = { 
             teacherId, teacherName: teacherProfile.name || '', 
@@ -535,7 +578,6 @@
             canSubmitLesson: isLessonFlag && !existingRes && !isExpired
         };
 
-        // --- កំណត់សោរការប្រឡង (Lock) ដើម្បីប្រើពេលសិស្សចាកចេញ ---
         if (!isLessonFlag) {
             localStorage.setItem('active_exam_lock', JSON.stringify({
                 studentId: currentUser.ID,
@@ -546,7 +588,6 @@
             }));
         }
 
-        // ទាញយកចម្លើយដែល Auto Save ចុងក្រោយពី Browser Profile (LocalStorage)
         const answerKey = `exam_ans_${currentUser.ID}_${teacherId}_${month}_${encodeURIComponent(subject)}_${isLessonFlag}`;
         const savedAnswers = localStorage.getItem(answerKey);
         if (savedAnswers) studentAnswers = JSON.parse(savedAnswers);
@@ -555,7 +596,6 @@
         renderApp();
     };
 
-    // --- មុខងារ Auto-Save ទៅកាន់ Browser ពេលសិស្សចុច ឬវាយចម្លើយ ---
     window.saveAnswersToLocal = () => {
         if(!activeExamContext) return;
         const answerKey = `exam_ans_${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}_${activeExamContext.isLesson}`;
@@ -571,7 +611,6 @@
             studentAnswers[qId] = optIndex;
         }
         
-        // Save Auto ភ្លាមៗ
         window.saveAnswersToLocal();
         
         const container = document.getElementById(`q-options-${qId}`);
@@ -596,7 +635,6 @@
 
     window.saveEssayAnswerUI = (qId, val) => {
         studentAnswers[qId] = val;
-        // Save Auto ភ្លាមៗរាល់ពេលវាយ
         window.saveAnswersToLocal();
     };
 
@@ -625,7 +663,7 @@
     };
 
     window.submitExam = async () => {
-        window.isSubmitting = true; // ប្រាប់ប្រព័ន្ធថាសិស្សចុច Submit ពិតប្រាកដ (លែងលោតសារព្រមាន Anti-Cheat)
+        window.isSubmitting = true; 
         const btn1 = document.getElementById('btnSubmitExamFinal'); if(btn1) { btn1.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងបញ្ជូន...'; btn1.disabled = true; }
         const btn2 = document.getElementById('btnSubmitExamFinalBottom'); if(btn2) { btn2.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> កំពុងបញ្ជូន...'; btn2.disabled = true; }
         
@@ -668,16 +706,13 @@
         try {
             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'results'), examData);
             
-            // លុបសោរ Anti-Cheat ក្រោយពេលបញ្ជូនជោគជ័យ
             localStorage.removeItem('active_exam_lock');
-            
-            // លុបទិន្នន័យចម្លើយ Auto-Save ចេញពីម៉ាស៊ីន
             const answerKey = `exam_ans_${currentUser.ID}_${activeExamContext.teacherId}_${activeExamContext.month}_${encodeURIComponent(activeExamContext.subject)}_${activeExamContext.isLesson}`;
             localStorage.removeItem(answerKey);
             
             window.customAlert("បញ្ជូនចម្លើយបានជោគជ័យ! ការប្រឡងត្រូវបានបញ្ចប់ដោយបរិបូរណ៍។", () => { window.exitExam(); });
         } catch (error) {
-            window.isSubmitting = false; // បរាជ័យ បើកសិទ្ធិវិញ
+            window.isSubmitting = false; 
             window.customAlert("មានបញ្ហាក្នុងការបញ្ជូនចម្លើយ។ សូមព្យាយាមម្តងទៀត។");
             if(btn1) { btn1.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> បញ្ជូនចម្លើយ'; btn1.disabled = false; }
             if(btn2) { btn2.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> បញ្ជូនចម្លើយ'; btn2.disabled = false; }
@@ -747,7 +782,6 @@
          if (qTime > groupedExams[key].createdAt) groupedExams[key].createdAt = qTime;
       });
 
-      // តម្រៀបពីថ្មីនៅលើ
       const groupedExamsArray = Object.entries(groupedExams).map(([keyStr, exam]) => ({ keyStr, ...exam }));
       groupedExamsArray.sort((a, b) => b.createdAt - a.createdAt);
 
@@ -799,6 +833,7 @@
              </div>`;
          } else {
              examCount++;
+             let durationMinutes = (teacherProfile.examDurations && teacherProfile.examDurations[exam.month]) ? Number(teacherProfile.examDurations[exam.month]) : 60;
              let totalPoints = exam.questions.reduce((sum, q) => sum + (q.points || 0), 0);
              
              examsHtml += `
@@ -822,6 +857,13 @@
                   </div>
                   <div class="w-px h-6 bg-gray-200"></div>
                   <div class="text-center">
+                     <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">នាទី</div>
+                     <div class="font-extrabold text-blue-600">
+                        ${existingRes ? '0' : durationMinutes}
+                     </div>
+                  </div>
+                  <div class="w-px h-6 bg-gray-200"></div>
+                  <div class="text-center">
                      <div class="text-gray-500 text-[10px] font-bold uppercase tracking-wider">ពិន្ទុ</div>
                      <div class="font-extrabold text-orange-500">${totalPoints}</div>
                   </div>
@@ -831,17 +873,15 @@
                  ? `<button disabled class="w-full bg-gray-100 text-gray-500 font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm cursor-not-allowed border border-gray-200"><i class="fas fa-lock text-gray-400"></i> បានប្រឡងរួច</button>` 
                  : (isExpired 
                     ? `<button disabled class="w-full bg-red-50 text-red-500 font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm cursor-not-allowed border border-red-200"><i class="fas fa-ban"></i> ផុតសុពលភាព</button>`
-                    : `<button onclick="window.startExam('${safeKeyStr}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm"><i class="fas fa-pen-nib"></i> ចាប់ផ្តើមធ្វើវិញ្ញាសា</button>`
+                    : `<button onclick="window.openExamTerms('${safeKeyStr}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md flex items-center justify-center gap-2 text-sm"><i class="fas fa-pen-nib"></i> ចាប់ផ្តើមធ្វើវិញ្ញាសា</button>`
                  )}
              </div>`;
          }
       });
 
-      // --- រចនាប័ទ្ម Main Dashboard View ---
       if (activeDashboardView === 'main') {
           return `
             <div class="max-w-5xl mx-auto px-2 sm:px-4 space-y-8 pb-10 mt-6">
-               <!-- Welcome Banner -->
                <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-6 border-b-4 border-blue-400">
                   <div class="absolute top-0 right-0 opacity-10 text-9xl -mt-10 -mr-10"><i class="fas fa-graduation-cap"></i></div>
                   <div class="relative z-10 text-center sm:text-left">
@@ -850,7 +890,6 @@
                   </div>
                </div>
 
-               <!-- Two Main Choices -->
                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                   <button onclick="window.setDashboardView('lessons')" class="bg-white p-8 rounded-3xl shadow-sm border-2 border-transparent hover:border-purple-400 hover:shadow-lg transition-all text-center group transform hover:-translate-y-1">
                       <div class="w-24 h-24 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-5 text-4xl group-hover:scale-110 transition duration-300 shadow-inner"><i class="fas fa-book-open"></i></div>
@@ -869,7 +908,6 @@
             </div>
           `;
       } 
-      // --- រចនាប័ទ្ម Exams View ---
       else if (activeDashboardView === 'exams') {
           return `
             <div class="max-w-6xl mx-auto px-2 sm:px-4 space-y-6 pb-10 mt-6">
@@ -884,7 +922,6 @@
             </div>
           `;
       }
-      // --- រចនាប័ទ្ម Lessons View ---
       else if (activeDashboardView === 'lessons') {
           return `
             <div class="max-w-6xl mx-auto px-2 sm:px-4 space-y-6 pb-10 mt-6">
@@ -946,7 +983,6 @@
                      <p class="text-xs sm:text-sm text-gray-500 font-semibold mt-1">សូមអូសមើល និងឆ្លើយសំណួរទាំងអស់ខាងក្រោម</p>
                   </div>
                   <div class="flex items-center gap-3">
-                     <!-- ជំនួស Timer ដោយប្រអប់ពិន្ទុ ឬព័ត៌មាន -->
                      <div class="bg-blue-100 text-blue-800 font-bold text-sm sm:text-base px-3 sm:px-4 py-2 rounded-xl border-2 border-blue-200 shadow-sm shrink-0">
                          សរុប ${activeExamQuestions.length} សំណួរ
                      </div>
