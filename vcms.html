@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Library សម្រាប់បង្កើត QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Library សម្រាប់គូរក្រាប (Chart) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
       body { font-family: 'Noto Sans Khmer', sans-serif; background-color: #f3f4f6; color: #1f2937; }
@@ -99,8 +101,12 @@
         <a href="teacher.html" class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-bold px-4 py-2.5 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors mr-2 border border-blue-200 shadow-sm" title="ត្រឡប់ទៅទំព័រដើម">
             <i class="fas fa-arrow-left"></i> <span class="hidden md:block">ត្រឡប់ក្រោយ</span>
         </a>
-          <div class="my-2 border-t border-gray-100"></div><div class="px-4 py-1 text-xs font-bold text-gray-400 uppercase">ផ្នែកគ្រប់គ្រងទិន្នន័យ</div>
-          <button data-tab="classes" class="tab-btn active w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-layer-group w-5 text-center"></i> ថ្នាក់រៀន</button>
+          <div class="my-2 border-t border-gray-100"></div>
+          
+          <button data-tab="dashboard" class="tab-btn active w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-home w-5 text-center text-blue-500"></i> ទិដ្ឋភាពទូទៅ</button>
+
+          <div class="px-4 py-1 text-xs font-bold text-gray-400 uppercase mt-2">ផ្នែកគ្រប់គ្រងទិន្នន័យ</div>
+          <button data-tab="classes" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-layer-group w-5 text-center"></i> ថ្នាក់រៀន</button>
           <button data-tab="students" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-users w-5 text-center"></i> បញ្ជីសិស្ស</button>
           <button data-tab="subjects" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-book w-5 text-center"></i> មុខវិជ្ជា</button>
           <button data-tab="exams" class="tab-btn w-full text-left px-4 py-2.5 rounded-lg text-gray-600 flex items-center gap-3 font-semibold"><i class="fas fa-file-alt w-5 text-center"></i> ការប្រឡង</button>
@@ -148,15 +154,15 @@
 
       <!-- Main Content -->
       <div class="pl-56 flex-1 bg-gray-50 min-h-screen">
-        <div class="p-6 max-w-7xl mx-auto space-y-6">
+        <div class="p-4 sm:p-6 max-w-7xl mx-auto space-y-4">
           
-          <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center mb-6">
-              <h1 class="text-2xl font-bold text-blue-800 kh-heading flex items-center gap-3"><i class="fas fa-chalkboard-teacher text-blue-600"></i> បន្ទុកថ្នាក់ខ្ញុំ<span class="text-gray-500 font-sans font-medium text-base ml-2 bg-gray-100 px-3 py-1 rounded-full border">សាលា: <span id="header-school">មិនទាន់កំណត់</span></span></h1>
-              <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-bold border border-blue-100 shadow-sm"><i class="fas fa-folder-open mr-1"></i> <span id="header-tab">ថ្នាក់រៀន</span></div>
+          <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center mb-4">
+              <h1 class="text-xl sm:text-2xl font-bold text-blue-800 kh-heading flex items-center gap-3"><i class="fas fa-chalkboard-teacher text-blue-600"></i> បន្ទុកថ្នាក់ខ្ញុំ<span class="text-gray-500 font-sans font-medium text-sm sm:text-base ml-2 bg-gray-100 px-3 py-1 rounded-full border hidden sm:inline-block">សាលា: <span id="header-school">មិនទាន់កំណត់</span></span></h1>
+              <div class="bg-blue-50 text-blue-700 px-3 sm:px-4 py-2 rounded-lg font-bold border border-blue-100 shadow-sm text-sm sm:text-base"><i class="fas fa-folder-open mr-1"></i> <span id="header-tab">ទិដ្ឋភាពទូទៅ</span></div>
           </div>
 
           <!-- Print Date Selector (Global for Print Tabs) -->
-          <div id="print-date-container" class="hidden bg-white p-4 rounded-xl shadow-sm border border-blue-200 mb-6 flex flex-wrap items-center gap-4 transition-all">
+          <div id="print-date-container" class="hidden bg-white p-4 rounded-xl shadow-sm border border-blue-200 mb-4 flex flex-wrap items-center gap-4 transition-all">
               <div class="text-blue-800 font-bold"><i class="fas fa-calendar-alt mr-2"></i>កាលបរិច្ឆេទបោះពុម្ព៖</div>
               <div class="flex gap-2">
                   <input type="text" id="g-print-day" class="border border-gray-300 rounded-lg px-3 py-2 w-20 text-center outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" placeholder="ថ្ងៃទី">
@@ -166,8 +172,91 @@
               <div class="text-xs text-gray-500 bg-gray-50 p-2 rounded border border-gray-100"><i class="fas fa-info-circle text-blue-400"></i> ទុកទទេបើចង់សរសេរដោយដៃ។ ឧទាហរណ៍៖ ថ្ងៃទី <b>១២</b> ខែ <b>កក្កដា</b> ឆ្នាំ <b>២០២៤</b></div>
           </div>
 
+          <!-- DASHBOARD -->
+          <section id="tab-dashboard" class="tab">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+                <!-- Welcome Section -->
+                <div class="lg:col-span-2 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden flex flex-col justify-center min-h-[160px]">
+                    <div class="relative z-10">
+                        <h2 class="text-2xl font-moul mb-2 leading-loose" id="dash-welcome-name">ស្វាគមន៍មកកាន់ប្រព័ន្ធ VCMS</h2>
+                        <p class="text-blue-100 text-base">ប្រព័ន្ធគ្រប់គ្រងបន្ទុកថ្នាក់ ពិន្ទុ និងទិន្នន័យសិស្សប្រកបដោយប្រសិទ្ធភាព និងងាយស្រួល។</p>
+                    </div>
+                    <i class="fas fa-chart-line absolute -right-5 -bottom-5 text-8xl opacity-10"></i>
+                    <i class="fas fa-graduation-cap absolute right-24 top-6 text-5xl opacity-10"></i>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex flex-col items-center justify-center relative min-h-[160px]">
+                    <div class="w-full flex justify-between items-center border-b pb-2 mb-2">
+                        <h3 class="text-base font-bold text-gray-800"><i class="fas fa-chart-bar text-blue-500 mr-2"></i>វឌ្ឍនភាពបញ្ចូលពិន្ទុ</h3>
+                        <span id="dash-chart-year" class="text-xs bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-1 rounded">...</span>
+                    </div>
+                    <div class="w-full flex-1 relative min-h-[110px]">
+                        <canvas id="scoreStatsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div onclick="document.querySelector('[data-tab=\'classes\']').click()" class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 rounded-xl bg-blue-50 group-hover:bg-blue-100 text-blue-600 flex items-center justify-center text-2xl transition"><i class="fas fa-layer-group"></i></div>
+                    <div>
+                        <p class="text-gray-600 text-sm font-bold mb-1 group-hover:text-blue-600 transition">ថ្នាក់រៀនសរុប</p>
+                        <h3 class="text-2xl font-black text-gray-800" id="dash-total-classes">0</h3>
+                    </div>
+                </div>
+
+                <div onclick="document.querySelector('[data-tab=\'students\']').click()" class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 rounded-xl bg-green-50 group-hover:bg-green-100 text-green-600 flex items-center justify-center text-2xl transition"><i class="fas fa-users"></i></div>
+                    <div>
+                        <p class="text-gray-600 text-sm font-bold mb-1 group-hover:text-green-600 transition">សិស្សសរុប</p>
+                        <h3 class="text-2xl font-black text-gray-800" id="dash-total-students">0</h3>
+                    </div>
+                </div>
+
+                <div onclick="document.querySelector('[data-tab=\'subjects\']').click()" class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 rounded-xl bg-orange-50 group-hover:bg-orange-100 text-orange-600 flex items-center justify-center text-2xl transition"><i class="fas fa-book"></i></div>
+                    <div>
+                        <p class="text-gray-600 text-sm font-bold mb-1 group-hover:text-orange-600 transition">មុខវិជ្ជាសរុប</p>
+                        <h3 class="text-2xl font-black text-gray-800" id="dash-total-subjects">0</h3>
+                    </div>
+                </div>
+
+                <div onclick="document.querySelector('[data-tab=\'exams\']').click()" class="bg-white rounded-2xl p-4 shadow-sm border border-gray-200 flex items-center gap-4 hover:shadow-md transition cursor-pointer group">
+                    <div class="w-12 h-12 rounded-xl bg-purple-50 group-hover:bg-purple-100 text-purple-600 flex items-center justify-center text-2xl transition"><i class="fas fa-file-alt"></i></div>
+                    <div>
+                        <p class="text-gray-600 text-sm font-bold mb-1 group-hover:text-purple-600 transition">ការប្រឡងដែលបានបង្កើត</p>
+                        <h3 class="text-2xl font-black text-gray-800" id="dash-total-exams">0</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="mt-4 bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                <h3 class="font-bold text-base text-gray-800 mb-3 border-b pb-2"><i class="fas fa-bolt text-yellow-500 mr-2"></i>សកម្មភាពរហ័ស</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <button onclick="document.querySelector('[data-tab=\'classes\']').click()" class="p-3 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition text-center group">
+                        <div class="w-10 h-10 bg-gray-50 group-hover:bg-blue-100 text-gray-500 group-hover:text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 text-lg transition"><i class="fas fa-plus"></i></div>
+                        <span class="font-bold text-sm text-gray-700">បន្ថែមថ្នាក់ថ្មី</span>
+                    </button>
+                    <a href="score.html" class="p-3 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition text-center group block">
+                        <div class="w-10 h-10 bg-gray-50 group-hover:bg-blue-100 text-gray-500 group-hover:text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 text-lg transition"><i class="fas fa-marker"></i></div>
+                        <span class="font-bold text-sm text-gray-700">បញ្ចូលពិន្ទុ</span>
+                    </a>
+                    <button onclick="document.querySelector('[data-tab=\'reports\']').click()" class="p-3 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition text-center group">
+                        <div class="w-10 h-10 bg-gray-50 group-hover:bg-blue-100 text-gray-500 group-hover:text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 text-lg transition"><i class="fas fa-print"></i></div>
+                        <span class="font-bold text-sm text-gray-700">បោះពុម្ពលទ្ធផល</span>
+                    </button>
+                    <button onclick="document.querySelector('[data-tab=\'settings\']').click()" class="p-3 border border-gray-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 transition text-center group">
+                        <div class="w-10 h-10 bg-gray-50 group-hover:bg-blue-100 text-gray-500 group-hover:text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 text-lg transition"><i class="fas fa-user-cog"></i></div>
+                        <span class="font-bold text-sm text-gray-700">កែប្រវត្តិរូប</span>
+                    </button>
+                </div>
+            </div>
+          </section>
+
           <!-- CLASSES -->
-          <section id="tab-classes" class="tab">
+          <section id="tab-classes" class="tab hidden">
             <div class="grid lg:grid-cols-3 gap-6">
               <div class="lg:col-span-1">
                   <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 h-fit sticky top-6">
@@ -522,10 +611,12 @@
       let editingSubjectId = null;
       let editingExamId = null;
       let editingStudentId = null;
+      let scoreChartInstance = null; // សម្រាប់គ្រប់គ្រងក្រាប Chart.js
 
       function clearData() { 
           publicStudentsRaw=[]; classesData=[]; studentsData=[]; subjectsData=[]; examsData=[]; scoresData=[]; attendancesData=[]; settingsData={}; 
           unsubscribes.forEach(u=>u()); unsubscribes=[]; 
+          if(scoreChartInstance) { scoreChartInstance.destroy(); scoreChartInstance = null; }
       }
 
       function updateSubjectDisplayNo() {
@@ -590,6 +681,11 @@
                 settingsData.signatureURL = data.signatureURL || '';
                 settingsData.sealURL = data.sealURL || '';
                 $('#user-email').textContent = data.name || auth.currentUser.email;
+                
+                // Update Dashboard Welcome Name
+                if(data.name) {
+                    $('#dash-welcome-name').textContent = `ស្វាគមន៍ លោកគ្រូ/អ្នកគ្រូ ${data.name}`;
+                }
             } else {
                 settingsData.schoolName = 'វិទ្យាល័យកូប';
                 settingsData.district = '';
@@ -737,11 +833,130 @@
         });
       }
 
+      function runDashboard() {
+          $('#dash-total-classes').textContent = classesData.length;
+          $('#dash-total-students').textContent = studentsData.length;
+          $('#dash-total-subjects').textContent = subjectsData.length;
+          $('#dash-total-exams').textContent = examsData.length;
+          
+          // --- ចាប់ផ្តើមគណនាទិន្នន័យសម្រាប់គូរក្រាប ---
+          if (classesData.length === 0) return;
+
+          // ១. ស្វែងរកឆ្នាំសិក្សាចុងក្រោយគេបង្អស់
+          const years = [...new Set(classesData.map(c => c.year).filter(y => y))];
+          if (years.length === 0) return;
+          years.sort((a, b) => b.localeCompare(a)); // តម្រៀបពីធំទៅតូច
+          const latestYear = years[0];
+          $('#dash-chart-year').textContent = 'ឆ្នាំ ' + latestYear;
+
+          // ២. ទាញយកថ្នាក់ទាំងអស់ក្នុងឆ្នាំចុងក្រោយ
+          const targetClasses = classesData.filter(c => c.year === latestYear);
+          const targetClassIds = targetClasses.map(c => c.id);
+
+          // ៣. ទាញយកការប្រឡងដែលពាក់ព័ន្ធនឹងថ្នាក់ទាំងនោះ
+          const targetExams = examsData.filter(e => targetClassIds.includes(e.class_id));
+
+          // ៤. ចងក្រងទិន្នន័យតាមខែប្រឡង (ឈ្មោះការប្រឡង)
+          const examStats = {};
+
+          targetExams.forEach(exam => {
+              if (!examStats[exam.name]) {
+                  examStats[exam.name] = { expected: 0, entered: 0, displayNo: exam.display_no || 99 };
+              }
+
+              // រកចំនួនពិន្ទុដែលរំពឹងទុក (សិស្សក្នុងថ្នាក់ * មុខវិជ្ជាក្នុងថ្នាក់)
+              const stusCount = studentsData.filter(s => s.class_id === exam.class_id).length;
+              const subsCount = subjectsData.filter(s => s.class_id === exam.class_id).length;
+              const expected = stusCount * subsCount;
+
+              examStats[exam.name].expected += expected;
+
+              // រកចំនួនពិន្ទុដែលបានបញ្ចូលរួច
+              const enteredScores = scoresData.filter(sc => 
+                  sc.exam_id === exam.id && 
+                  sc.score !== '' && sc.score !== null && sc.score !== undefined
+              ).length;
+
+              examStats[exam.name].entered += enteredScores;
+          });
+
+          // ៥. រៀបចំទិន្នន័យដើម្បីបង្ហាញលើក្រាប
+          const sortedExamNames = Object.keys(examStats).sort((a, b) => examStats[a].displayNo - examStats[b].displayNo);
+          const labels = [];
+          const dataPercentages = [];
+
+          sortedExamNames.forEach(name => {
+              labels.push(name);
+              const stat = examStats[name];
+              const pct = stat.expected > 0 ? Math.round((stat.entered / stat.expected) * 100) : 0;
+              dataPercentages.push(pct);
+          });
+
+          // ៦. គូរក្រាបដោយប្រើ Chart.js
+          const ctx = document.getElementById('scoreStatsChart');
+          if (scoreChartInstance) {
+              scoreChartInstance.destroy();
+          }
+
+          scoreChartInstance = new Chart(ctx, {
+              type: 'bar',
+              data: {
+                  labels: labels,
+                  datasets: [{
+                      label: 'ភាគរយនៃការបញ្ចូលពិន្ទុ (%)',
+                      data: dataPercentages,
+                      backgroundColor: 'rgba(59, 130, 246, 0.85)', // Tailwind blue-500
+                      borderColor: 'rgb(37, 99, 235)', // Tailwind blue-600
+                      borderWidth: 1,
+                      borderRadius: 4,
+                      barThickness: 'flex',
+                      maxBarThickness: 35
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                          callbacks: {
+                              label: function(context) {
+                                  return context.parsed.y + '% បានបញ្ចូលពិន្ទុរួច';
+                              }
+                          },
+                          titleFont: { family: "'Noto Sans Khmer', sans-serif" },
+                          bodyFont: { family: "'Noto Sans Khmer', sans-serif" }
+                      }
+                  },
+                  scales: {
+                      y: {
+                          beginAtZero: true,
+                          max: 100,
+                          ticks: { 
+                              stepSize: 25, 
+                              font: { size: 10, family: "'Noto Sans Khmer', sans-serif" },
+                              callback: function(value) { return value + '%'; }
+                          },
+                          grid: { color: '#f3f4f6' },
+                          border: { display: false }
+                      },
+                      x: {
+                          ticks: { font: { size: 11, family: "'Noto Sans Khmer', sans-serif", weight: 'bold' } },
+                          grid: { display: false },
+                          border: { display: false }
+                      }
+                  }
+              }
+          });
+      }
+
       function refreshUI() {
         updateSelects();
         const t = $('.tab-btn.active')?.dataset.tab;
         
-        if(t==='classes') {
+        if(t==='dashboard') {
+            runDashboard();
+        } else if(t==='classes') {
             $('#table-classes tbody').innerHTML = [...classesData].sort((a,b)=>(a.display_no||99)-(b.display_no||99)).map((c,i)=>{
                 const cStus = studentsData.filter(s => s.class_id === c.id);
                 const femaleCount = cStus.filter(s => s.gender === 'F' || s.gender === 'ស្រី').length;
